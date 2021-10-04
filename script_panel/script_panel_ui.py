@@ -45,7 +45,7 @@ class ScriptPanelSettings(QtCore.QSettings):
 
     def add_to_favorites(self, script_path):
         favorites = self.get_value(self.k_favorites, default=list())
-        if not script_path in favorites:
+        if script_path not in favorites:
             favorites.append(script_path)
         self.setValue(self.k_favorites, favorites)
 
