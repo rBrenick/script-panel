@@ -87,10 +87,18 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.model.clear()
         self.model.setHorizontalHeaderLabels(["Name", "Path"])
 
+        python_icon = ui_utils.create_qicon("python_icon")
+        unknown_type_icon = ui_utils.create_qicon("unknown_icon")
+
         # then add normal scripts
         for script_path in spu.get_scripts():
             item = ScriptModelItem(script_path)
             item_script_path = QtGui.QStandardItem(item.script_path)
+            if script_path.lower().endswith(".py"):
+                item.setIcon(python_icon)
+            else:
+                item.setIcon(unknown_type_icon)
+
             self.model.appendRow([item, item_script_path])
 
     def refresh_favorites(self):
