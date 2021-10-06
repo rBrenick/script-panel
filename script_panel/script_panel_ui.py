@@ -126,7 +126,7 @@ class ScriptWidget(QtWidgets.QPushButton):
         self.clicked.connect(self.run_script)
 
         action_list = [
-            {"Remove Favorite": self.remove_widget_from_favorites}
+            {"Remove from favorites": self.remove_widget_from_favorites}
         ]
 
         self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
@@ -181,18 +181,19 @@ class ScriptPanelUI(QtWidgets.QWidget):
         self.favorites_LW.setDragEnabled(True)
         self.favorites_LW.setDefaultDropAction(QtCore.Qt.MoveAction)
         self.favorites_LW.setDragDropOverwriteMode(False)
+        self.favorites_LW.setSpacing(5)
 
         # self.favorites_message_overlay = FavoritesTextOverlay(self.favorites_LW)
         # self.favorites_LW.overlay_widget = self.favorites_message_overlay
 
         self.scripts_LV = ScriptListView()
+        self.scripts_LV.setSelectionMode(QtWidgets.QListView.ExtendedSelection)
         self.scripts_LV.setAlternatingRowColors(True)
         self.scripts_LV.setDragEnabled(True)
         self.scripts_LV.setDefaultDropAction(QtCore.Qt.MoveAction)
         self.scripts_LV.setDragDropOverwriteMode(False)
         self.scripts_LV.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
         self.scripts_LV.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.scripts_LV.setWindowTitle('Example List')
         self.scripts_LV.doubleClicked.connect(self.action_script_double_clicked)
 
         scripts_and_search_layout = QtWidgets.QVBoxLayout()
@@ -243,9 +244,14 @@ class ScriptListView(QtWidgets.QListView):
     def dragEnterEvent(self, event):
         if not event.mimeData().hasText():
             proxy = self.model()  # type: QtCore.QSortFilterProxyModel
-            model_index = proxy.mapToSource(self.currentIndex())
-            script_item = proxy.sourceModel().itemFromIndex(model_index)  # type: ScriptModelItem
-            event.mimeData().setText(script_item.script_path)
+
+            selected_script_paths = []
+            for index in self.selectedIndexes():
+                model_index = proxy.mapToSource(index)
+                script_item = proxy.sourceModel().itemFromIndex(model_index)  # type: ScriptModelItem
+                selected_script_paths.append(script_item.script_path)
+
+            event.mimeData().setText(", ".join(selected_script_paths))
         event.accept()
 
 
@@ -258,8 +264,9 @@ class ScriptFavoritesWidget(QtWidgets.QListWidget):
 
     def dropEvent(self, *args, **kwargs):
         drop_event = args[0]  # type: QtGui.QDropEvent
-        script_path = drop_event.mimeData().text()
-        self.script_dropped.emit(script_path)
+        drop_text = drop_event.mimeData().text()
+        for script_path in drop_text.split(", "):
+            self.script_dropped.emit(script_path)
 
     # def resizeEvent(self, event):
     #     self.overlay_widget.resize(event.size())
