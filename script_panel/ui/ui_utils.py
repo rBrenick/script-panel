@@ -98,6 +98,64 @@ class BaseWindow(QtWidgets.QMainWindow):
         self.move(window_offset_x, window_offset_y) # move to dcc screen center
 
 
+def build_menu_from_action_list(actions, menu=None, is_sub_menu=False):
+    if not menu:
+        menu = QtWidgets.QMenu()
+
+    for action in actions:
+        if action == "-":
+            menu.addSeparator()
+            continue
+
+        for action_title, action_command in action.items():
+            if action_title == "RADIO_SETTING":
+                # Create RadioButtons for QSettings object
+                settings_obj = action_command.get("settings")  # type: QtCore.QSettings
+                settings_key = action_command.get("settings_key")  # type: str
+                choices = action_command.get("choices")  # type: list
+                default_choice = action_command.get("default")  # type: str
+                on_trigger_command = action_command.get("on_trigger_command")  # function to trigger after setting value
+
+                # Has choice been defined in settings?
+                item_to_check = settings_obj.value(settings_key)
+
+                # If not, read from default option argument
+                if not item_to_check:
+                    item_to_check = default_choice
+
+                grp = QtWidgets.QActionGroup(menu)
+                for choice_key in choices:
+                    action = QtWidgets.QAction(choice_key, menu)
+                    action.setCheckable(True)
+
+                    if choice_key == item_to_check:
+                        action.setChecked(True)
+
+                    action.triggered.connect(functools.partial(set_settings_value,
+                                                               settings_obj,
+                                                               settings_key,
+                                                               choice_key,
+                                                               on_trigger_command))
+                    menu.addAction(action)
+                    grp.addAction(action)
+
+                grp.setExclusive(True)
+                continue
+
+            if isinstance(action_command, list):
+                sub_menu = menu.addMenu(action_title)
+                build_menu_from_action_list(action_command, menu=sub_menu, is_sub_menu=True)
+                continue
+
+            atn = menu.addAction(action_title)
+            atn.triggered.connect(action_command)
+
+    if not is_sub_menu:
+        cursor = QtGui.QCursor()
+        menu.exec_(cursor.pos())
+
+    return menu
+
 """
 QT UTILS END
 """

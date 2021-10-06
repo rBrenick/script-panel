@@ -49,6 +49,12 @@ class ScriptPanelSettings(QtCore.QSettings):
             favorites.append(script_path)
         self.setValue(self.k_favorites, favorites)
 
+    def remove_from_favorites(self, script_path):
+        favorites = self.get_value(self.k_favorites, default=list())
+        if script_path in favorites:
+            favorites.remove(script_path)
+        self.setValue(self.k_favorites, favorites)
+
 
 class ScriptPanelWidget(QtWidgets.QWidget):
     def __init__(self, *args, **kwargs):
@@ -69,13 +75,13 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.ui.favorites_LW.script_dropped.connect(self.add_script_to_favorites)
 
         # build ui
-        self.build_model()
+        self.refresh_scripts()
 
         main_layout = QtWidgets.QVBoxLayout()
         main_layout.addWidget(self.ui)
         self.setLayout(main_layout)
 
-    def build_model(self):
+    def refresh_scripts(self):
         favorite_scripts = self.settings.get_value(ScriptPanelSettings.k_favorites, default=list())
 
         self.model.clear()
@@ -89,11 +95,15 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
     def add_script_to_favorites(self, script_path):
         self.settings.add_to_favorites(script_path)
-        self.build_model()
+        self.refresh_scripts()
+
+    def remove_script_from_favorites(self, script_path):
+        self.settings.remove_from_favorites(script_path)
+        self.refresh_scripts()
 
     def add_favorite_widget(self, script_path):
-
         script_widget = ScriptWidget(script_path)
+        script_widget.remove_from_favorites.connect(self.remove_script_from_favorites)
 
         lwi = QtWidgets.QListWidgetItem()
         self.ui.favorites_LW.addItem(lwi)
@@ -105,6 +115,8 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
 
 class ScriptWidget(QtWidgets.QPushButton):
+    remove_from_favorites = QtCore.Signal(str)
+
     def __init__(self, script_path="ExampleScript.py", *args, **kwargs):
         super(ScriptWidget, self).__init__(*args, **kwargs)
 
@@ -113,8 +125,18 @@ class ScriptWidget(QtWidgets.QPushButton):
 
         self.clicked.connect(self.run_script)
 
+        action_list = [
+            {"Remove Favorite": self.remove_widget_from_favorites}
+        ]
+
+        self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(lambda: ui_utils.build_menu_from_action_list(action_list))
+
     def run_script(self):
         spu.run_script(self.script_path)
+
+    def remove_widget_from_favorites(self):
+        self.remove_from_favorites.emit(self.script_path)
 
 
 class ScriptModelItem(QtGui.QStandardItem):
