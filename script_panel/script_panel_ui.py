@@ -73,6 +73,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.ui.search_LE.textChanged.connect(self.filter_scripts)
         self.ui.script_double_clicked.connect(spu.run_script)
         self.ui.favorites_LW.script_dropped.connect(self.add_script_to_favorites)
+        self.ui.favorites_LW.order_updated.connect(self.save_favorites_layout)
 
         # build ui
         self.refresh_favorites()
@@ -114,25 +115,43 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         script_widget.remove_from_favorites.connect(self.remove_script_from_favorites)
 
         lwi = QtWidgets.QListWidgetItem()
+        lwi.setSizeHint(script_widget.sizeHint())
         self.ui.favorites_LW.addItem(lwi)
         self.ui.favorites_LW.setItemWidget(lwi, script_widget)
+
+    def save_favorites_layout(self):
+        # get order of widgets in list
+        items = [self.ui.favorites_LW.item(i) for i in range(self.ui.favorites_LW.count())]
+        favorites = []
+        for lwi in items:
+            item = self.ui.favorites_LW.itemWidget(lwi)  # type: ScriptWidget
+            favorites.append(item.script_path)
+
+        self.settings.setValue(self.settings.k_favorites, favorites)
 
     def filter_scripts(self, text):
         search = QtCore.QRegExp(text, QtCore.Qt.CaseInsensitive, QtCore.QRegExp.RegExp)
         self.proxy.setFilterRegExp(search)
 
 
-class ScriptWidget(QtWidgets.QPushButton):
+class ScriptWidget(QtWidgets.QWidget):
     remove_from_favorites = QtCore.Signal(str)
 
     def __init__(self, script_path="ExampleScript.py", *args, **kwargs):
         super(ScriptWidget, self).__init__(*args, **kwargs)
 
         self.script_path = script_path
-        self.setText(os.path.basename(script_path))
 
-        self.clicked.connect(self.run_script)
+        btn = QtWidgets.QPushButton(parent=self)
+        btn.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+        btn.setText(os.path.basename(script_path))
+        btn.clicked.connect(self.run_script)
 
+        main_layout = QtWidgets.QHBoxLayout()
+        main_layout.addWidget(btn)
+        self.setLayout(main_layout)
+
+        # right click menu
         action_list = [
             {"Remove from favorites": self.remove_widget_from_favorites}
         ]
@@ -166,7 +185,7 @@ class ScriptPanelWindow(ui_utils.BaseWindow):
         self.main_widget = ScriptPanelWidget()
         self.setCentralWidget(self.main_widget)
         self.setWindowTitle("Script Panel")
-        self.resize(600, 800)
+        self.resize(1000, 1000)
 
 
 class ScriptPanelUI(QtWidgets.QWidget):
@@ -189,7 +208,6 @@ class ScriptPanelUI(QtWidgets.QWidget):
         self.favorites_LW.setDragEnabled(True)
         self.favorites_LW.setDefaultDropAction(QtCore.Qt.MoveAction)
         self.favorites_LW.setDragDropOverwriteMode(False)
-        self.favorites_LW.setSpacing(5)
 
         # self.favorites_message_overlay = FavoritesTextOverlay(self.favorites_LW)
         # self.favorites_LW.overlay_widget = self.favorites_message_overlay
@@ -268,6 +286,7 @@ class ScriptTreeView(QtWidgets.QTreeView):
 
 class ScriptFavoritesWidget(QtWidgets.QListWidget):
     script_dropped = QtCore.Signal(str)
+    order_updated = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
         super(ScriptFavoritesWidget, self).__init__(*args, **kwargs)
@@ -275,9 +294,14 @@ class ScriptFavoritesWidget(QtWidgets.QListWidget):
 
     def dropEvent(self, *args, **kwargs):
         drop_event = args[0]  # type: QtGui.QDropEvent
-        drop_text = drop_event.mimeData().text()
-        for script_path in drop_text.split(", "):
-            self.script_dropped.emit(script_path)
+        if drop_event.mimeData().hasText():
+            drop_text = drop_event.mimeData().text()
+            for script_path in drop_text.split(", "):
+                self.script_dropped.emit(script_path)
+        else:
+            drop_event.setDropAction(QtCore.Qt.MoveAction)
+            super(ScriptFavoritesWidget, self).dropEvent(*args, **kwargs)
+            self.order_updated.emit()
 
     # def resizeEvent(self, event):
     #     self.overlay_widget.resize(event.size())
