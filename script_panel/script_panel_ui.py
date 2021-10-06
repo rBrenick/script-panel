@@ -220,7 +220,9 @@ class ScriptPanelUI(QtWidgets.QWidget):
 class ScriptListView(QtWidgets.QListView):
     def dragEnterEvent(self, event):
         if not event.mimeData().hasText():
-            script_item = self.model().itemFromIndex(self.currentIndex())  # type: ScriptModelItem
+            proxy = self.model()  # type: QtCore.QSortFilterProxyModel
+            model_index = proxy.mapToSource(self.currentIndex())
+            script_item = proxy.sourceModel().itemFromIndex(model_index)  # type: ScriptModelItem
             event.mimeData().setText(script_item.script_path)
         event.accept()
 
