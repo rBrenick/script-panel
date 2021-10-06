@@ -67,7 +67,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.model = QtGui.QStandardItemModel()
         self.proxy = QtCore.QSortFilterProxyModel(self)
         self.proxy.setSourceModel(self.model)
-        self.ui.scripts_LV.setModel(self.proxy)
+        self.ui.scripts_TV.setModel(self.proxy)
 
         # connect signals
         self.ui.search_LE.textChanged.connect(self.filter_scripts)
@@ -75,6 +75,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.ui.favorites_LW.script_dropped.connect(self.add_script_to_favorites)
 
         # build ui
+        self.refresh_favorites()
         self.refresh_scripts()
 
         main_layout = QtWidgets.QVBoxLayout()
@@ -82,24 +83,31 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.setLayout(main_layout)
 
     def refresh_scripts(self):
-        favorite_scripts = self.settings.get_value(ScriptPanelSettings.k_favorites, default=list())
-
         self.model.clear()
-        self.ui.favorites_LW.clear()
+        self.model.setHorizontalHeaderLabels(["Name", "Path"])
+
+        # then add normal scripts
         for script_path in spu.get_scripts():
             item = ScriptModelItem(script_path)
-            self.model.appendRow(item)
+            item_script_path = QtGui.QStandardItem(item.script_path)
+            self.model.appendRow([item, item_script_path])
 
-            if script_path in favorite_scripts:
-                self.add_favorite_widget(script_path)
+    def refresh_favorites(self):
+        favorite_scripts = self.settings.get_value(ScriptPanelSettings.k_favorites, default=list())
+
+        self.ui.favorites_LW.clear()
+
+        # first add favorite scripts
+        for script_path in favorite_scripts:
+            self.add_favorite_widget(script_path)
 
     def add_script_to_favorites(self, script_path):
         self.settings.add_to_favorites(script_path)
-        self.refresh_scripts()
+        self.refresh_favorites()
 
     def remove_script_from_favorites(self, script_path):
         self.settings.remove_from_favorites(script_path)
-        self.refresh_scripts()
+        self.refresh_favorites()
 
     def add_favorite_widget(self, script_path):
         script_widget = ScriptWidget(script_path)
@@ -186,19 +194,19 @@ class ScriptPanelUI(QtWidgets.QWidget):
         # self.favorites_message_overlay = FavoritesTextOverlay(self.favorites_LW)
         # self.favorites_LW.overlay_widget = self.favorites_message_overlay
 
-        self.scripts_LV = ScriptListView()
-        self.scripts_LV.setSelectionMode(QtWidgets.QListView.ExtendedSelection)
-        self.scripts_LV.setAlternatingRowColors(True)
-        self.scripts_LV.setDragEnabled(True)
-        self.scripts_LV.setDefaultDropAction(QtCore.Qt.MoveAction)
-        self.scripts_LV.setDragDropOverwriteMode(False)
-        self.scripts_LV.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
-        self.scripts_LV.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.scripts_LV.doubleClicked.connect(self.action_script_double_clicked)
+        self.scripts_TV = ScriptTreeView()
+        self.scripts_TV.setSelectionMode(QtWidgets.QListView.ExtendedSelection)
+        self.scripts_TV.setAlternatingRowColors(True)
+        self.scripts_TV.setDragEnabled(True)
+        self.scripts_TV.setDefaultDropAction(QtCore.Qt.MoveAction)
+        self.scripts_TV.setDragDropOverwriteMode(False)
+        self.scripts_TV.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
+        self.scripts_TV.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.scripts_TV.doubleClicked.connect(self.action_script_double_clicked)
 
         scripts_and_search_layout = QtWidgets.QVBoxLayout()
         scripts_and_search_layout.addWidget(self.search_LE)
-        scripts_and_search_layout.addWidget(self.scripts_LV)
+        scripts_and_search_layout.addWidget(self.scripts_TV)
         scripts_and_search_layout.setSpacing(2)
         scripts_and_search_layout.setContentsMargins(0, 0, 0, 0)
         scripts_and_search_widget = QtWidgets.QWidget()
@@ -209,13 +217,14 @@ class ScriptPanelUI(QtWidgets.QWidget):
         main_splitter.addWidget(self.favorites_LW)
         main_splitter.addWidget(scripts_and_search_widget)
 
-        # main_layout.addWidget(self.favorites_LW)
-        # main_layout.addWidget(self.search_LE)
         main_layout.addWidget(main_splitter)
         self.setLayout(main_layout)
 
     def action_script_double_clicked(self, index):
-        script_item = self.scripts_LV.model().itemFromIndex(index)  # type: ScriptModelItem
+        proxy = self.scripts_TV.model()  # type: QtCore.QSortFilterProxyModel
+        model_index = proxy.mapToSource(index)
+        script_item = proxy.sourceModel().itemFromIndex(model_index)  # type: ScriptModelItem
+
         self.script_double_clicked.emit(script_item.script_path)
 
 
@@ -240,7 +249,7 @@ class ScriptPanelUI(QtWidgets.QWidget):
 #         painter.drawText(event.rect(), QtCore.Qt.AlignCenter, self.empty_list_message)
 #         painter.setPen(QtGui.QPen(QtCore.Qt.NoPen))
 
-class ScriptListView(QtWidgets.QListView):
+class ScriptTreeView(QtWidgets.QTreeView):
     def dragEnterEvent(self, event):
         if not event.mimeData().hasText():
             proxy = self.model()  # type: QtCore.QSortFilterProxyModel
@@ -249,6 +258,8 @@ class ScriptListView(QtWidgets.QListView):
             for index in self.selectedIndexes():
                 model_index = proxy.mapToSource(index)
                 script_item = proxy.sourceModel().itemFromIndex(model_index)  # type: ScriptModelItem
+                if not isinstance(script_item, ScriptModelItem):
+                    continue
                 selected_script_paths.append(script_item.script_path)
 
             event.mimeData().setText(", ".join(selected_script_paths))
