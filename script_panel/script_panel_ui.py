@@ -8,6 +8,11 @@ from script_panel import script_panel_utils as spu
 from script_panel.ui import ui_utils
 from script_panel.ui.ui_utils import QtCore, QtWidgets, QtGui
 
+active_dcc_is_maya = "maya" in os.path.basename(sys.executable).lower()
+
+if active_dcc_is_maya:
+    from . import script_panel_dcc_maya as dcc_module
+
 
 class ScriptPanelSettings(QtCore.QSettings):
     k_favorites = "favorites"
@@ -205,6 +210,7 @@ class ScriptPanelUI(QtWidgets.QWidget):
         self.search_LE = QtWidgets.QLineEdit()
         self.search_LE.setClearButtonEnabled(True)
         self.search_LE.setPlaceholderText("Search...")
+        self.search_LE.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.Minimum)
 
         self.refresh_BTN = QtWidgets.QPushButton("Refresh")
 
@@ -278,21 +284,42 @@ class ScriptPanelUI(QtWidgets.QWidget):
 #         painter.setPen(QtGui.QPen(QtCore.Qt.NoPen))
 
 class ScriptTreeView(QtWidgets.QTreeView):
+    def __init__(self, *args, **kwargs):
+        super(ScriptTreeView, self).__init__(*args, **kwargs)
+
+        # right click menu
+        action_list = [
+            {"Edit": self.open_script_in_editor},
+        ]
+
+        self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(lambda: ui_utils.build_menu_from_action_list(action_list))
+
     def dragEnterEvent(self, event):
         if not event.mimeData().hasText():
-            proxy = self.model()  # type: QtCore.QSortFilterProxyModel
-
-            selected_script_paths = []
-            for index in self.selectedIndexes():
-                model_index = proxy.mapToSource(index)
-                script_item = proxy.sourceModel().itemFromIndex(model_index)  # type: ScriptModelItem
-                if not isinstance(script_item, ScriptModelItem):
-                    continue
-                selected_script_paths.append(script_item.script_path)
-
+            selected_script_paths = self.get_selected_script_paths()
             event.mimeData().setText(", ".join(selected_script_paths))
-            
+
         event.accept()
+
+    def get_selected_script_paths(self):
+        proxy = self.model()  # type: QtCore.QSortFilterProxyModel
+
+        selected_script_paths = []
+        for index in self.selectedIndexes():
+            model_index = proxy.mapToSource(index)
+            script_item = proxy.sourceModel().itemFromIndex(model_index)  # type: ScriptModelItem
+            if not isinstance(script_item, ScriptModelItem):
+                continue
+            selected_script_paths.append(script_item.script_path)
+
+        return selected_script_paths
+
+    def open_script_in_editor(self):
+        if not active_dcc_is_maya:
+            return
+        for script_path in self.get_selected_script_paths():
+            dcc_module.open_script(script_path)
 
 
 class ScriptFavoritesWidget(QtWidgets.QListWidget):
@@ -307,6 +334,7 @@ class ScriptFavoritesWidget(QtWidgets.QListWidget):
 
         # right click menu
         action_list = [
+            {"Edit": self.open_script_in_editor},
             {"Remove from favorites": self.remove_scripts_from_favorites}
         ]
 
@@ -328,12 +356,21 @@ class ScriptFavoritesWidget(QtWidgets.QListWidget):
             super(ScriptFavoritesWidget, self).dropEvent(*args, **kwargs)
             self.order_updated.emit()
 
-    def remove_scripts_from_favorites(self):
-        to_remove = []
+    def get_selected_script_paths(self):
+        script_paths = []
         for lwi in self.selectedItems():  # type: QtWidgets.QListWidgetItem
             script_widget = self.itemWidget(lwi)  # type:ScriptWidget
-            to_remove.append(script_widget.script_path)
-        self.remove_favorites.emit(to_remove)
+            script_paths.append(script_widget.script_path)
+        return script_paths
+
+    def remove_scripts_from_favorites(self):
+        self.remove_favorites.emit(self.get_selected_script_paths())
+
+    def open_script_in_editor(self):
+        if not active_dcc_is_maya:
+            return
+        for script_path in self.get_selected_script_paths():
+            dcc_module.open_script(script_path)
 
     # def resizeEvent(self, event):
     #     self.overlay_widget.resize(event.size())
