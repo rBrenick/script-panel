@@ -74,6 +74,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.ui.script_double_clicked.connect(spu.run_script)
         self.ui.favorites_LW.script_dropped.connect(self.add_script_to_favorites)
         self.ui.favorites_LW.order_updated.connect(self.save_favorites_layout)
+        self.ui.favorites_LW.remove_favorites.connect(self.remove_scripts_from_favorites)
 
         # build ui
         self.refresh_favorites()
@@ -114,13 +115,13 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.settings.add_to_favorites(script_path)
         self.refresh_favorites()
 
-    def remove_script_from_favorites(self, script_path):
-        self.settings.remove_from_favorites(script_path)
+    def remove_scripts_from_favorites(self, script_paths):
+        for script_path in script_paths:
+            self.settings.remove_from_favorites(script_path)
         self.refresh_favorites()
 
     def add_favorite_widget(self, script_path):
         script_widget = ScriptWidget(script_path)
-        script_widget.remove_from_favorites.connect(self.remove_script_from_favorites)
 
         lwi = QtWidgets.QListWidgetItem()
         lwi.setSizeHint(script_widget.sizeHint())
@@ -143,7 +144,6 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
 
 class ScriptWidget(QtWidgets.QWidget):
-    remove_from_favorites = QtCore.Signal(str)
 
     def __init__(self, script_path="ExampleScript.py", *args, **kwargs):
         super(ScriptWidget, self).__init__(*args, **kwargs)
@@ -159,19 +159,8 @@ class ScriptWidget(QtWidgets.QWidget):
         main_layout.addWidget(btn)
         self.setLayout(main_layout)
 
-        # right click menu
-        action_list = [
-            {"Remove from favorites": self.remove_widget_from_favorites}
-        ]
-
-        self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-        self.customContextMenuRequested.connect(lambda: ui_utils.build_menu_from_action_list(action_list))
-
     def run_script(self):
         spu.run_script(self.script_path)
-
-    def remove_widget_from_favorites(self):
-        self.remove_from_favorites.emit(self.script_path)
 
 
 class ScriptModelItem(QtGui.QStandardItem):
@@ -211,6 +200,7 @@ class ScriptPanelUI(QtWidgets.QWidget):
         self.search_LE.setPlaceholderText("Search...")
 
         self.favorites_LW = ScriptFavoritesWidget()
+        self.favorites_LW.setSelectionMode(QtWidgets.QListWidget.ExtendedSelection)
         self.favorites_LW.setDropIndicatorShown(True)
         self.favorites_LW.setAcceptDrops(True)
         self.favorites_LW.setDragEnabled(True)
@@ -224,7 +214,7 @@ class ScriptPanelUI(QtWidgets.QWidget):
         self.scripts_TV.setSelectionMode(QtWidgets.QListView.ExtendedSelection)
         self.scripts_TV.setAlternatingRowColors(True)
         self.scripts_TV.setDragEnabled(True)
-        self.scripts_TV.setDefaultDropAction(QtCore.Qt.MoveAction)
+        self.scripts_TV.setDefaultDropAction(QtCore.Qt.IgnoreAction)
         self.scripts_TV.setDragDropOverwriteMode(False)
         self.scripts_TV.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
         self.scripts_TV.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
@@ -289,27 +279,49 @@ class ScriptTreeView(QtWidgets.QTreeView):
                 selected_script_paths.append(script_item.script_path)
 
             event.mimeData().setText(", ".join(selected_script_paths))
+            
         event.accept()
 
 
 class ScriptFavoritesWidget(QtWidgets.QListWidget):
     script_dropped = QtCore.Signal(str)
     order_updated = QtCore.Signal()
+    remove_favorites = QtCore.Signal(list)
 
     def __init__(self, *args, **kwargs):
         super(ScriptFavoritesWidget, self).__init__(*args, **kwargs)
-        # self.overlay_widget = None
+
+        QtWidgets.QShortcut(QtGui.QKeySequence("DEL"), self, self.remove_scripts_from_favorites)
+
+        # right click menu
+        action_list = [
+            {"Remove from favorites": self.remove_scripts_from_favorites}
+        ]
+
+        self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(lambda: ui_utils.build_menu_from_action_list(action_list))
 
     def dropEvent(self, *args, **kwargs):
+
         drop_event = args[0]  # type: QtGui.QDropEvent
+
         if drop_event.mimeData().hasText():
             drop_text = drop_event.mimeData().text()
             for script_path in drop_text.split(", "):
                 self.script_dropped.emit(script_path)
         else:
+            if type(drop_event.source()) == ScriptTreeView:
+                return
             drop_event.setDropAction(QtCore.Qt.MoveAction)
             super(ScriptFavoritesWidget, self).dropEvent(*args, **kwargs)
             self.order_updated.emit()
+
+    def remove_scripts_from_favorites(self):
+        to_remove = []
+        for lwi in self.selectedItems():  # type: QtWidgets.QListWidgetItem
+            script_widget = self.itemWidget(lwi)  # type:ScriptWidget
+            to_remove.append(script_widget.script_path)
+        self.remove_favorites.emit(to_remove)
 
     # def resizeEvent(self, event):
     #     self.overlay_widget.resize(event.size())
