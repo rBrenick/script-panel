@@ -92,9 +92,12 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         unknown_type_icon = ui_utils.create_qicon("unknown_icon")
 
         # then add normal scripts
-        for script_path in spu.get_scripts():
+        for script_path, path_info in spu.get_scripts().items():
             item = ScriptModelItem(script_path)
-            item_script_path = QtGui.QStandardItem(item.script_path)
+
+            folder_rel_path = os.path.relpath(os.path.dirname(script_path), path_info.get("root"))
+            item_script_path = QtGui.QStandardItem(".../" + folder_rel_path)
+
             if script_path.lower().endswith(".py"):
                 item.setIcon(python_icon)
             else:
