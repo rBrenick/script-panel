@@ -71,6 +71,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
         # connect signals
         self.ui.search_LE.textChanged.connect(self.filter_scripts)
+        self.ui.refresh_BTN.clicked.connect(self.refresh_scripts)
         self.ui.script_double_clicked.connect(spu.run_script)
         self.ui.favorites_LW.script_dropped.connect(self.add_script_to_favorites)
         self.ui.favorites_LW.order_updated.connect(self.save_favorites_layout)
@@ -104,6 +105,9 @@ class ScriptPanelWidget(QtWidgets.QWidget):
                 item.setIcon(unknown_type_icon)
 
             self.model.appendRow([item, item_script_path])
+
+        header = self.ui.scripts_TV.header()
+        header.setSectionResizeMode(0, header.ResizeToContents)
 
     def refresh_favorites(self):
         favorite_scripts = self.settings.get_value(ScriptPanelSettings.k_favorites, default=list())
@@ -202,6 +206,8 @@ class ScriptPanelUI(QtWidgets.QWidget):
         self.search_LE.setClearButtonEnabled(True)
         self.search_LE.setPlaceholderText("Search...")
 
+        self.refresh_BTN = QtWidgets.QPushButton("Refresh")
+
         self.favorites_LW = ScriptFavoritesWidget()
         self.favorites_LW.setSelectionMode(QtWidgets.QListWidget.ExtendedSelection)
         self.favorites_LW.setDropIndicatorShown(True)
@@ -224,7 +230,10 @@ class ScriptPanelUI(QtWidgets.QWidget):
         self.scripts_TV.doubleClicked.connect(self.action_script_double_clicked)
 
         scripts_and_search_layout = QtWidgets.QVBoxLayout()
-        scripts_and_search_layout.addWidget(self.search_LE)
+        search_bar_layout = QtWidgets.QHBoxLayout()
+        search_bar_layout.addWidget(self.search_LE)
+        search_bar_layout.addWidget(self.refresh_BTN)
+        scripts_and_search_layout.addLayout(search_bar_layout)
         scripts_and_search_layout.addWidget(self.scripts_TV)
         scripts_and_search_layout.setSpacing(2)
         scripts_and_search_layout.setContentsMargins(0, 0, 0, 0)
