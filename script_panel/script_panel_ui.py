@@ -328,12 +328,13 @@ class ScriptFavoritesWidget(QtWidgets.QListWidget):
     #     event.accept()
 
 
-def main():
+def main(refresh=False):
     standalone_app = None
     if not QtWidgets.QApplication.instance():
         standalone_app = QtWidgets.QApplication(sys.argv)
 
     win = ScriptPanelWindow()
+    win.show_ui(refresh=refresh)
 
     if standalone_app:
         sys.exit(standalone_app.exec_())

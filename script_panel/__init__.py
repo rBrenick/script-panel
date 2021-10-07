@@ -1,7 +1,7 @@
 # content
-def main():
+def main(*args, **kwargs):
     from script_panel import script_panel_ui
-    return script_panel_ui.main()
+    return script_panel_ui.main(*args, **kwargs)
 
 
 def reload_modules():
