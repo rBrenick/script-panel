@@ -1,5 +1,5 @@
-# script-panel
-Template for a basic Qt tool in Maya
+# Script Panel
+Easy access to running scripts from various folders
 
 ![tool header image](docs/header_image.png)
 
