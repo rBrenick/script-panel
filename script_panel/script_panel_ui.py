@@ -2,6 +2,7 @@ __author__ = "Richard Brenick"
 
 # Standard
 import os.path
+import subprocess
 import sys
 
 from script_panel import script_panel_utils as spu
@@ -77,7 +78,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         # connect signals
         self.ui.search_LE.textChanged.connect(self.filter_scripts)
         self.ui.refresh_BTN.clicked.connect(self.refresh_scripts)
-        self.ui.script_double_clicked.connect(spu.run_script)
+        self.ui.script_double_clicked.connect(spu.file_triggered)
         self.ui.favorites_LW.script_dropped.connect(self.add_script_to_favorites)
         self.ui.favorites_LW.order_updated.connect(self.save_favorites_layout)
         self.ui.favorites_LW.remove_favorites.connect(self.remove_scripts_from_favorites)
@@ -102,7 +103,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
             item = ScriptModelItem(script_path)
 
             folder_rel_path = os.path.relpath(os.path.dirname(script_path), path_info.get("root"))
-            item_script_path = QtGui.QStandardItem(".../" + folder_rel_path)
+            item_script_path = QtGui.QStandardItem("...\\" + folder_rel_path)
 
             if script_path.lower().endswith(".py"):
                 item.setIcon(python_icon)
@@ -167,12 +168,16 @@ class ScriptWidget(QtWidgets.QWidget):
         btn.setText(os.path.basename(script_path))
         btn.clicked.connect(self.run_script)
 
+        if self.script_path.lower().endswith(".py"):
+            python_icon = ui_utils.create_qicon("python_icon")
+            btn.setIcon(python_icon)
+
         main_layout = QtWidgets.QHBoxLayout()
         main_layout.addWidget(btn)
         self.setLayout(main_layout)
 
     def run_script(self):
-        spu.run_script(self.script_path)
+        spu.file_triggered(self.script_path)
 
 
 class ScriptModelItem(QtGui.QStandardItem):
@@ -290,6 +295,7 @@ class ScriptTreeView(QtWidgets.QTreeView):
         # right click menu
         action_list = [
             {"Edit": self.open_script_in_editor},
+            {"Show In Explorer": self.open_script_in_explorer},
         ]
 
         self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
@@ -317,9 +323,14 @@ class ScriptTreeView(QtWidgets.QTreeView):
 
     def open_script_in_editor(self):
         if not active_dcc_is_maya:
+            print("ScriptEditor open not defined for this DCC")
             return
         for script_path in self.get_selected_script_paths():
             dcc_module.open_script(script_path)
+
+    def open_script_in_explorer(self):
+        for script_path in self.get_selected_script_paths():
+            subprocess.Popen(r'explorer /select, "{}"'.format(script_path))
 
 
 class ScriptFavoritesWidget(QtWidgets.QListWidget):
@@ -330,7 +341,8 @@ class ScriptFavoritesWidget(QtWidgets.QListWidget):
     def __init__(self, *args, **kwargs):
         super(ScriptFavoritesWidget, self).__init__(*args, **kwargs)
 
-        QtWidgets.QShortcut(QtGui.QKeySequence("DEL"), self, self.remove_scripts_from_favorites)
+        del_hotkey = QtWidgets.QShortcut(QtGui.QKeySequence("DEL"), self, self.remove_scripts_from_favorites)
+        del_hotkey.setContext(QtCore.Qt.WidgetShortcut)
 
         # right click menu
         action_list = [

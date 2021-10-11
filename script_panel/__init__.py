@@ -11,7 +11,9 @@ def reload_modules():
     else:
         from imp import reload
 
+    from script_panel import script_panel_dcc_maya
     from script_panel import script_panel_utils
     from script_panel import script_panel_ui
+    reload(script_panel_dcc_maya)
     reload(script_panel_utils)
     reload(script_panel_ui)

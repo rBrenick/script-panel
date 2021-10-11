@@ -12,6 +12,39 @@ else:
     from os import walk as walk_func
 
 
+def undefined_extension_func(file_path):
+    file_ext = os.path.splitext(file_path)[-1]
+    print("Action needed for extension: {}".format(file_ext))
+
+
+def run_python_script(script_path):
+    runpy.run_path(script_path)
+
+
+EXTENSION_MAP = {
+    ".py": run_python_script
+}
+
+
+def add_extension_func_to_map(extension, func):
+    EXTENSION_MAP[extension] = func
+
+
+def get_file_triggered_func(file_path):
+    """
+    Get defined function for this extension
+    """
+
+    file_ext = os.path.splitext(file_path)[-1]
+    file_type_func = EXTENSION_MAP.get(file_ext, undefined_extension_func)
+    return file_type_func
+
+
+def file_triggered(file_path):
+    trigger_func = get_file_triggered_func(file_path)
+    trigger_func(file_path)
+
+
 def get_scripts():
     # PLACEHOLDER
     root_folders = os.environ.get("SCRIPT_PANEL_ROOT_FOLDERS", "").split(";")
@@ -33,7 +66,3 @@ def get_scripts():
                 }
 
     return script_paths
-
-
-def run_script(script_path):
-    runpy.run_path(script_path)

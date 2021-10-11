@@ -8,6 +8,9 @@ def open_script(script_path):
     This is pretty much a duplicate of scriptEditorPanel.mel - global proc loadFileInNewTab(),
     That function doesn't accept a path argument so we need to rebuild the logic
     """
+
+    script_path = script_path.replace("\\", "/")
+
     if pm.mel.selectExecuterTabByName(script_path):  # tab exists, switch to it
         reload_selected_tab()
         return
