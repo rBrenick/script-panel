@@ -18,7 +18,7 @@ def undefined_extension_func(file_path):
 
 
 def run_python_script(script_path):
-    runpy.run_path(script_path)
+    runpy.run_path(script_path, init_globals=globals())
 
 
 EXTENSION_MAP = {
@@ -49,7 +49,7 @@ def get_scripts():
     # PLACEHOLDER
     root_folders = os.environ.get("SCRIPT_PANEL_ROOT_FOLDERS", "").split(";")
     if not any(root_folders):
-        root_folders = ["D:\Google Drive\Scripting\_Scripts"]
+        root_folders = [r"D:\Google Drive\Scripting\_Scripts"]
 
     script_paths = OrderedDict()
 
