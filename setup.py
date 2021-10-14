@@ -8,7 +8,7 @@ setuptools.setup(
     version="1.0.0",
     author="Richard Brenick",
     author_email="RichardBrenick@gmail.com",
-    description="maya tool template",
+    description="list of scripts from a folder",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/rBrenick/script-panel",
@@ -19,10 +19,6 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    
-    install_requires=[
-    "Qt.py",
-    ]
 )
 
 
