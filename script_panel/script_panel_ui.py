@@ -9,6 +9,12 @@ from script_panel import script_panel_utils as spu
 from script_panel.ui import ui_utils
 from script_panel.ui.ui_utils import QtCore, QtWidgets, QtGui
 
+try:
+    from script_panel import script_panel_skyhook as sp_skyhook
+except ImportError as e:
+    print("Optional skyhook import failed: {}".format(e))
+    sp_skyhook = None
+
 active_dcc_is_maya = "maya" in os.path.basename(sys.executable).lower()
 
 if active_dcc_is_maya:
@@ -159,6 +165,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
     def add_favorite_widget(self, script_path):
         script_widget = ScriptWidget(script_path)
+        script_widget.script_clicked.connect(self.activate_script)
 
         lwi = QtWidgets.QListWidgetItem()
         lwi.setSizeHint(script_widget.sizeHint())
@@ -179,31 +186,39 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         search = QtCore.QRegExp(text, QtCore.Qt.CaseInsensitive, QtCore.QRegExp.RegExp)
         self.proxy.setFilterRegExp(search)
 
-    def script_double_clicked(self):
+    def script_double_clicked(self, script_path):
         user_setting = self.settings.get_value(self.settings.k_double_click_action, spu.lk.run_script_on_click)
 
         if user_setting == spu.lk.run_script_on_click:
-            self.activate_script()
+            self.activate_script(script_path)
         else:
-            self.open_script_in_editor()
+            self.open_script_in_editor(script_path)
 
-    def activate_script(self):
-        for script_path in self.ui.scripts_TV.get_selected_script_paths():
-            spu.file_triggered(script_path)
+    def activate_script(self, script_path=None):
+        if not script_path:
+            script_path = self.ui.scripts_TV.get_selected_script_paths()[0]
 
-    def open_script_in_editor(self):
+        if sp_skyhook:
+            if self.ui.skyhook_blender_CHK.isChecked():
+                sp_skyhook.run_script_in_blender(script_path)
+                return
+
+        spu.file_triggered(script_path)
+
+    def open_script_in_editor(self, script_path):
         if not active_dcc_is_maya:
             print("ScriptEditor open not defined for this DCC")
             return
-        for script_path in self.ui.scripts_TV.get_selected_script_paths():
-            dcc_module.open_script(script_path)
+        script_path = self.ui.scripts_TV.get_selected_script_paths()[0]
+        dcc_module.open_script(script_path)
 
-    def open_script_in_explorer(self):
-        for script_path in self.ui.scripts_TV.get_selected_script_paths():
-            subprocess.Popen(r'explorer /select, "{}"'.format(script_path))
+    def open_script_in_explorer(self, script_path):
+        script_path = self.ui.scripts_TV.get_selected_script_paths()[0]
+        subprocess.Popen(r'explorer /select, "{}"'.format(script_path))
 
 
 class ScriptWidget(QtWidgets.QWidget):
+    script_clicked = QtCore.Signal(str)
 
     def __init__(self, script_path="ExampleScript.py", *args, **kwargs):
         super(ScriptWidget, self).__init__(*args, **kwargs)
@@ -213,7 +228,7 @@ class ScriptWidget(QtWidgets.QWidget):
         btn = QtWidgets.QPushButton(parent=self)
         btn.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
         btn.setText(os.path.basename(script_path))
-        btn.clicked.connect(self.run_script)
+        btn.clicked.connect(self.activate_script)
 
         if self.script_path.lower().endswith(".py"):
             python_icon = ui_utils.create_qicon("python_icon")
@@ -224,8 +239,8 @@ class ScriptWidget(QtWidgets.QWidget):
         main_layout.setContentsMargins(20, 2, 20, 2)
         self.setLayout(main_layout)
 
-    def run_script(self):
-        spu.file_triggered(self.script_path)
+    def activate_script(self):
+        self.script_clicked.emit(self.script_path)
 
 
 class ScriptModelItem(QtGui.QStandardItem):
@@ -303,6 +318,13 @@ class ScriptPanelUI(QtWidgets.QWidget):
         main_splitter.setOrientation(QtCore.Qt.Orientation.Vertical)
         main_splitter.addWidget(self.favorites_LW)
         main_splitter.addWidget(scripts_and_search_widget)
+
+        if sp_skyhook:
+            skyhook_dccs_layout = QtWidgets.QHBoxLayout()
+            self.skyhook_blender_CHK = QtWidgets.QCheckBox(text="Skyhook to Blender")
+            self.skyhook_blender_CHK.setChecked(True)
+            skyhook_dccs_layout.addWidget(self.skyhook_blender_CHK)
+            main_layout.addLayout(skyhook_dccs_layout)
 
         main_layout.addWidget(main_splitter)
         self.setLayout(main_layout)

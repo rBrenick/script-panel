@@ -16,6 +16,10 @@ class LocalConstants:
     run_script_on_click = "Run Script on Double Click"
     edit_script_on_click = "Edit Script on Double Click"
 
+    dcc_maya = "Maya"
+    dcc_blender = "Maya"
+    dcc_standalone = "Standalone"
+
 
 lk = LocalConstants
 
