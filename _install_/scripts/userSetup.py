@@ -4,12 +4,14 @@ import sys
 import site
 import inspect
 
+
 def common_startup():
     # Add site-packages to sys.path
-    package_dir = os.path.dirname(os.path.dirname(os.path.dirname(inspect.getfile(inspect.currentframe())))) # my god
+    package_dir = os.path.dirname(os.path.dirname(os.path.dirname(inspect.getfile(inspect.currentframe()))))  # my god
     
     if package_dir not in sys.path:
         site.addsitedir(package_dir)
+
 
 common_startup()
 
@@ -18,9 +20,5 @@ common_startup()
 try:
     import script_panel.script_panel_dcc_setup
     script_panel.script_panel_dcc_setup.startup()
-except StandardError as e:
+except Exception as e:
     print(e)
-    
-    
-
-
