@@ -12,6 +12,14 @@ else:
     from os import walk as walk_func
 
 
+class LocalConstants:
+    run_script_on_click = "Run Script on Double Click"
+    edit_script_on_click = "Edit Script on Double Click"
+
+
+lk = LocalConstants
+
+
 def undefined_extension_func(file_path):
     file_ext = os.path.splitext(file_path)[-1]
     print("Action needed for extension: {}".format(file_ext))

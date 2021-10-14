@@ -14,15 +14,20 @@ active_dcc_is_maya = "maya" in os.path.basename(sys.executable).lower()
 if active_dcc_is_maya:
     from . import script_panel_dcc_maya as dcc_module
 
+    dcc_name = "Maya"
+else:
+    dcc_name = "Standalone"
+
 
 class ScriptPanelSettings(QtCore.QSettings):
     k_favorites = "favorites"
+    k_double_click_action = "double_click_action"
 
     def __init__(self, *args, **kwargs):
         super(ScriptPanelSettings, self).__init__(
             QtCore.QSettings.IniFormat,
             QtCore.QSettings.UserScope,
-            "script_panel", "script_panel_standalone",
+            "script_panel", "script_panel_{}".format(dcc_name.lower()),
             *args, **kwargs)
 
     def get_value(self, key, default=None):
@@ -78,10 +83,29 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         # connect signals
         self.ui.search_LE.textChanged.connect(self.filter_scripts)
         self.ui.refresh_BTN.clicked.connect(self.refresh_scripts)
-        self.ui.script_double_clicked.connect(spu.file_triggered)
+        self.ui.script_double_clicked.connect(self.script_double_clicked)
         self.ui.favorites_LW.script_dropped.connect(self.add_script_to_favorites)
         self.ui.favorites_LW.order_updated.connect(self.save_favorites_layout)
         self.ui.favorites_LW.remove_favorites.connect(self.remove_scripts_from_favorites)
+
+        # right click menu
+        script_panel_context_actions = [
+            {"Run": self.activate_script},
+            {"Edit": self.open_script_in_editor},
+            "-",
+            {"RADIO_SETTING": {"settings": self.settings,
+                               "settings_key": self.settings.k_double_click_action,
+                               "choices": [spu.lk.run_script_on_click, spu.lk.edit_script_on_click],
+                               "default": spu.lk.run_script_on_click,
+                               }},
+            "-",
+            {"Show In Explorer": self.open_script_in_explorer},
+        ]
+
+        self.ui.scripts_TV.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.ui.scripts_TV.customContextMenuRequested.connect(
+            lambda: ui_utils.build_menu_from_action_list(script_panel_context_actions)
+        )
 
         # build ui
         self.refresh_favorites()
@@ -154,6 +178,29 @@ class ScriptPanelWidget(QtWidgets.QWidget):
     def filter_scripts(self, text):
         search = QtCore.QRegExp(text, QtCore.Qt.CaseInsensitive, QtCore.QRegExp.RegExp)
         self.proxy.setFilterRegExp(search)
+
+    def script_double_clicked(self):
+        user_setting = self.settings.get_value(self.settings.k_double_click_action, spu.lk.run_script_on_click)
+
+        if user_setting == spu.lk.run_script_on_click:
+            self.activate_script()
+        else:
+            self.open_script_in_editor()
+
+    def activate_script(self):
+        for script_path in self.ui.scripts_TV.get_selected_script_paths():
+            spu.file_triggered(script_path)
+
+    def open_script_in_editor(self):
+        if not active_dcc_is_maya:
+            print("ScriptEditor open not defined for this DCC")
+            return
+        for script_path in self.ui.scripts_TV.get_selected_script_paths():
+            dcc_module.open_script(script_path)
+
+    def open_script_in_explorer(self):
+        for script_path in self.ui.scripts_TV.get_selected_script_paths():
+            subprocess.Popen(r'explorer /select, "{}"'.format(script_path))
 
 
 class ScriptWidget(QtWidgets.QWidget):
@@ -292,15 +339,6 @@ class ScriptTreeView(QtWidgets.QTreeView):
     def __init__(self, *args, **kwargs):
         super(ScriptTreeView, self).__init__(*args, **kwargs)
 
-        # right click menu
-        action_list = [
-            {"Edit": self.open_script_in_editor},
-            {"Show In Explorer": self.open_script_in_explorer},
-        ]
-
-        self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-        self.customContextMenuRequested.connect(lambda: ui_utils.build_menu_from_action_list(action_list))
-
     def dragEnterEvent(self, event):
         if not event.mimeData().hasText():
             selected_script_paths = self.get_selected_script_paths()
@@ -320,17 +358,6 @@ class ScriptTreeView(QtWidgets.QTreeView):
             selected_script_paths.append(script_item.script_path)
 
         return selected_script_paths
-
-    def open_script_in_editor(self):
-        if not active_dcc_is_maya:
-            print("ScriptEditor open not defined for this DCC")
-            return
-        for script_path in self.get_selected_script_paths():
-            dcc_module.open_script(script_path)
-
-    def open_script_in_explorer(self):
-        for script_path in self.get_selected_script_paths():
-            subprocess.Popen(r'explorer /select, "{}"'.format(script_path))
 
 
 class ScriptFavoritesWidget(QtWidgets.QListWidget):

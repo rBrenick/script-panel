@@ -1,6 +1,7 @@
 # Standard
 import os
 import sys
+import functools
 
 # Not even going to pretend to have Maya 2016 support
 from PySide2 import QtCore
@@ -169,7 +170,6 @@ def build_menu_from_action_list(actions, menu=None, is_sub_menu=False):
                 settings_key = action_command.get("settings_key")  # type: str
                 choices = action_command.get("choices")  # type: list
                 default_choice = action_command.get("default")  # type: str
-                on_trigger_command = action_command.get("on_trigger_command")  # function to trigger after setting value
 
                 # Has choice been defined in settings?
                 item_to_check = settings_obj.value(settings_key)
@@ -189,8 +189,7 @@ def build_menu_from_action_list(actions, menu=None, is_sub_menu=False):
                     action.triggered.connect(functools.partial(set_settings_value,
                                                                settings_obj,
                                                                settings_key,
-                                                               choice_key,
-                                                               on_trigger_command))
+                                                               choice_key))
                     menu.addAction(action)
                     grp.addAction(action)
 
@@ -210,6 +209,12 @@ def build_menu_from_action_list(actions, menu=None, is_sub_menu=False):
         menu.exec_(cursor.pos())
 
     return menu
+
+
+def set_settings_value(settings_obj, key, value, post_set_command=None):
+    settings_obj.setValue(key, value)
+    if post_set_command:
+        post_set_command()
 
 
 """
