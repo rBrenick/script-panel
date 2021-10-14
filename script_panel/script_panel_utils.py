@@ -26,7 +26,7 @@ def undefined_extension_func(file_path):
 
 
 def run_python_script(script_path):
-    runpy.run_path(script_path, init_globals=globals())
+    runpy.run_path(script_path, init_globals=globals(), run_name="__main__")
 
 
 EXTENSION_MAP = {
