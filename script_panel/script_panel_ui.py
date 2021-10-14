@@ -221,6 +221,7 @@ class ScriptWidget(QtWidgets.QWidget):
 
         main_layout = QtWidgets.QHBoxLayout()
         main_layout.addWidget(btn)
+        main_layout.setContentsMargins(20, 2, 20, 2)
         self.setLayout(main_layout)
 
     def run_script(self):
