@@ -22,6 +22,8 @@ if active_dcc_is_maya:
 
     dcc_name = "Maya"
 else:
+    from . import script_panel_dcc_standalone as dcc_module
+
     dcc_name = "Standalone"
 
 
@@ -205,15 +207,17 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
         spu.file_triggered(script_path)
 
-    def open_script_in_editor(self, script_path):
-        if not active_dcc_is_maya:
-            print("ScriptEditor open not defined for this DCC")
+    def open_script_in_editor(self, script_path=None):
+        if "open_script" not in dir(dcc_module):
+            print("Editor open not defined for this DCC")
             return
-        script_path = self.ui.scripts_TV.get_selected_script_paths()[0]
+        if not script_path:
+            script_path = self.ui.scripts_TV.get_selected_script_paths()[0]
         dcc_module.open_script(script_path)
 
-    def open_script_in_explorer(self, script_path):
-        script_path = self.ui.scripts_TV.get_selected_script_paths()[0]
+    def open_script_in_explorer(self, script_path=None):
+        if not script_path:
+            script_path = self.ui.scripts_TV.get_selected_script_paths()[0]
         subprocess.Popen(r'explorer /select, "{}"'.format(script_path))
 
 
@@ -429,7 +433,8 @@ class ScriptFavoritesWidget(QtWidgets.QListWidget):
         self.remove_favorites.emit(self.get_selected_script_paths())
 
     def open_script_in_editor(self):
-        if not active_dcc_is_maya:
+        if "open_script" not in dir(dcc_module):
+            print("Editor open not defined for this DCC")
             return
         for script_path in self.get_selected_script_paths():
             dcc_module.open_script(script_path)
