@@ -2,9 +2,14 @@
   "default_indent": 0,
   "paths": [
     {
+      "root_dir": "__THIS_FILE__\\..",
+      "root_type": "local",
+      "folder_prefix": "Example"
+    },
+    {
       "root_dir": "D:\\Google Drive\\Scripting\\_Scripts",
       "root_type": "network",
-      "folder_prefix": "Drive"
+      "folder_prefix": "GoogleDrive"
     },
     {
       "root_dir": "C:\\Users\\Richa\\Perforce\\LocalWorkspace",

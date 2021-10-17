@@ -108,12 +108,17 @@ def get_env_data():
 
     # if nothing is defined, use example config
     if not env_str:
-        env_str = os.path.join(os.path.dirname(__file__), "example_script_panel_config.json")
+        env_str = os.path.join(os.path.dirname(__file__), "example_config", "example_script_panel_config.json")
 
     # if env_str is a path to a json config, read the contents from that file
     if env_str.endswith(".json") and os.path.exists(env_str):
-        with open(env_str, "r") as fp:
+        config_path = env_str
+        with open(config_path, "r") as fp:
             env_data = json.load(fp)
+
+        # replace "local file token" with full file path of config
+        modified_data = json.dumps(env_data).replace("__THIS_FILE__", config_path.replace("\\", "\\\\"))
+        env_data = json.loads(modified_data)
 
     # or parse data directly from environment variable
     else:
