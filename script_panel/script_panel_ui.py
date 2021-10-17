@@ -31,6 +31,7 @@ else:
 class ScriptPanelSettings(QtCore.QSettings):
     k_favorites = "favorites"
     k_double_click_action = "double_click_action"
+    k_skyhook_enabled = "skyhook_enabled"
 
     def __init__(self, *args, **kwargs):
         super(ScriptPanelSettings, self).__init__(
@@ -123,10 +124,16 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         # build ui
         self.refresh_favorites()
         self.refresh_scripts()
+        self.load_settings()
 
         main_layout = QtWidgets.QVBoxLayout()
         main_layout.addWidget(self.ui)
         self.setLayout(main_layout)
+
+    def load_settings(self):
+        if sp_skyhook:
+            skyhook_enabled = self.settings.get_value(self.settings.k_skyhook_enabled, default=False)
+            self.ui.skyhook_blender_CHK.setChecked(skyhook_enabled)
 
     def refresh_scripts(self):
         self.model.clear()
