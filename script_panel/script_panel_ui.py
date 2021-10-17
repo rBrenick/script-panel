@@ -501,13 +501,13 @@ class ScriptFavoritesWidget(QtWidgets.QListWidget):
     #     event.accept()
 
 
-def main(refresh=False):
+def main(reload=False):
     standalone_app = None
     if not QtWidgets.QApplication.instance():
         standalone_app = QtWidgets.QApplication(sys.argv)
 
     win = ScriptPanelWindow()
-    win.show_ui(refresh=refresh)
+    win.show_ui(reload=reload)
 
     if standalone_app:
         sys.exit(standalone_app.exec_())

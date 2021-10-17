@@ -11,7 +11,7 @@ class ScriptPanelSortProxyModel(QtCore.QSortFilterProxyModel):
     """
 
     def __init__(self, model):
-        super().__init__()
+        super(ScriptPanelSortProxyModel, self).__init__(model)
         self.setSourceModel(model)
 
     def lessThan(self, left, right):

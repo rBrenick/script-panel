@@ -88,8 +88,8 @@ if active_dcc_is_maya:
             class_name = self.__class__.__name__
             self.setObjectName(class_name)
 
-        def show_ui(self, restore=False, refresh=False):
-            if refresh:
+        def show_ui(self, restore=False, reload=False):
+            if reload:
                 WindowCache.window_instance = None
 
                 workspace_control_name = self.objectName() + "WorkspaceControl"
