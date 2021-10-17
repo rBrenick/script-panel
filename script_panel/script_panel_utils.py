@@ -23,8 +23,15 @@ class LocalConstants:
 
     env_key = "SCRIPT_PANEL_ROOT_FOLDERS"
     path_root_dir = "root_dir"
+    paths = "paths"
     default_indent = "default_indent"
     folder_display_prefix = "folder_prefix"
+
+
+class PathInfoKeys:
+    # keys for dicts being returned by get_scripts
+    root_dir = "root"
+    folder_prefix = "folder_prefix"
 
 
 lk = LocalConstants
@@ -68,21 +75,15 @@ class EnvironmentData(object):
     Handler class for environment properties
     """
 
-    def __init__(self, env_str=None, env_key=None):
-        if not env_str:
-            env_str = os.environ.get(env_key, "")
-
-        env_data = get_data_from_string(env_str)
-
-        # set properties from json dict
-        self.path_data = env_data.get("paths", [])
+    def __init__(self, env_data):
+        self.path_data = env_data.get(lk.paths, [])
         self.default_expand_depth = env_data.get(lk.default_indent, 0)
 
 
 def get_data_from_string(env_str):
     # if json data is in the env string, load info from that
-    if env_str.startswith('JSON - '):
-        env_data = json.loads(env_str.lstrip("JSON - "))
+    if env_str.startswith('{'):
+        env_data = json.loads(env_str)
     else:
         # only folders specified in environment variable. extract the rest of the data from that
         root_folders = env_str.split(";")
@@ -90,7 +91,7 @@ def get_data_from_string(env_str):
         paths = []
         for root_folder in root_folders:
             paths.append({root_folder})
-        env_data["paths"] = paths
+        env_data[lk.paths] = paths
 
     return env_data
 
@@ -103,19 +104,20 @@ def get_env_data():
     """
     env_str = os.environ.get(lk.env_key, "")
 
-    # example formatted JSON str
+    # if nothing is defined, use example config
     if not env_str:
-        env_str = r"""JSON - {
-            "default_indent": 0,
-            "paths": [
-                {
-                    "root_folder": "D:\\Google Drive\\Scripting\\_Scripts",
-                    "folder_prefix": "Drive"
-                }
-            ]
-            }"""
+        env_str = os.path.join(os.path.dirname(__file__), "example_script_panel_config.json")
 
-    return EnvironmentData(env_str=env_str)
+    # if env_str is a path to a json config, read the contents from that file
+    if env_str.endswith(".json") and os.path.exists(env_str):
+        with open(env_str, "r") as fp:
+            env_data = json.load(fp)
+
+    # or parse data directly from environment variable
+    else:
+        env_data = get_data_from_string(env_str)
+
+    return EnvironmentData(env_data)
 
 
 def get_scripts(env_data=None):
@@ -124,7 +126,7 @@ def get_scripts(env_data=None):
 
     script_paths = OrderedDict()
     for path_data in env_data.path_data:
-        root_folder = path_data.get("root_folder")
+        root_folder = path_data.get(lk.path_root_dir)
         display_prefix = path_data.get(lk.folder_display_prefix)
 
         for folder, __, script_names in walk_func(root_folder):
@@ -135,8 +137,8 @@ def get_scripts(env_data=None):
                 full_script_path = full_script_path.replace("/", "\\")
 
                 script_paths[full_script_path] = {
-                    lk.path_root_dir: root_folder,
-                    lk.folder_display_prefix: display_prefix,
+                    PathInfoKeys.root_dir: root_folder,
+                    PathInfoKeys.folder_prefix: display_prefix,
                 }
 
     return script_paths

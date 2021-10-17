@@ -1,0 +1,10 @@
+{
+  "default_indent": 0,
+  "paths": [
+    {
+      "root_dir": "D:\\Google Drive\\Scripting\\_Scripts",
+      "type": "local",
+      "folder_prefix": "Drive"
+    }
+  ]
+}

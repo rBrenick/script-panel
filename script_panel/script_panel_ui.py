@@ -150,8 +150,8 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         header.setSectionResizeMode(0, header.ResizeToContents)
 
     def add_script_to_model(self, script_path, path_info):
-        path_root_dir = path_info.get(spu.lk.path_root_dir)
-        display_prefix = path_info.get(spu.lk.folder_display_prefix)
+        path_root_dir = path_info.get(spu.PathInfoKeys.root_dir)
+        display_prefix = path_info.get(spu.PathInfoKeys.folder_prefix)
 
         # display path in tree view
         display_dir_rel_path = os.path.relpath(os.path.dirname(script_path), path_root_dir)

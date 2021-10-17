@@ -15,14 +15,16 @@ class ScriptPanelSortProxyModel(QtCore.QSortFilterProxyModel):
         self.setSourceModel(model)
 
     def lessThan(self, left, right):
-        """Perform sorting comparison.
-
+        """
+        Perform sorting comparison.
         Since we know the sort order, we can ensure that folders always come first.
         """
-        left_is_folder = left.data(_qt.UserRole).is_folder
-        left_data = left.data(_qt.DisplayRole)
-        right_is_folder = right.data(_qt.UserRole).is_folder
-        right_data = right.data(_qt.DisplayRole)
+        left_path_data = left.data(_qt.UserRole)  # type: PathData
+        right_path_data = right.data(_qt.UserRole)  # type: PathData
+        left_is_folder = left_path_data.is_folder if left_path_data else False
+        left_data = left.data(_qt.DisplayRole) or ""
+        right_is_folder = right_path_data.is_folder if right_path_data else False
+        right_data = right.data(_qt.DisplayRole) or ""
         sort_order = self.sortOrder()
 
         if left_is_folder and not right_is_folder:
