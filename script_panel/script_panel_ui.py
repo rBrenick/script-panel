@@ -6,6 +6,7 @@ import subprocess
 import sys
 
 from script_panel import script_panel_utils as spu
+from script_panel.ui import folder_model
 from script_panel.ui import ui_utils
 from script_panel.ui.ui_utils import QtCore, QtWidgets, QtGui
 
@@ -82,11 +83,15 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.ui = ScriptPanelUI()
         self.settings = ScriptPanelSettings()
 
+        self.env_data = spu.get_env_data()  # type: spu.EnvironmentData
+        self.default_expand_depth = self.env_data.default_expand_depth
+
         # build model
         self.model = QtGui.QStandardItemModel()
-        self.proxy = QtCore.QSortFilterProxyModel(self)
-        self.proxy.setSourceModel(self.model)
+        self.proxy = folder_model.ScriptPanelSortProxyModel(self.model)
         self.ui.scripts_TV.setModel(self.proxy)
+        self.ui.scripts_TV.setSortingEnabled(True)
+        self._model_folders = {}
 
         # connect signals
         self.ui.search_LE.textChanged.connect(self.filter_scripts)
@@ -125,27 +130,64 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
     def refresh_scripts(self):
         self.model.clear()
-        self.model.setHorizontalHeaderLabels(["Name", "Path"])
-
-        python_icon = ui_utils.create_qicon("python_icon")
-        unknown_type_icon = ui_utils.create_qicon("unknown_icon")
+        self.model.setHorizontalHeaderLabels(["Name"])
+        self._model_folders = {}
 
         # then add normal scripts
-        for script_path, path_info in spu.get_scripts().items():
-            item = ScriptModelItem(script_path)
+        for script_path, path_info in spu.get_scripts(env_data=self.env_data).items():
+            self.add_script_to_model(script_path, path_info)
 
-            folder_rel_path = os.path.relpath(os.path.dirname(script_path), path_info.get("root"))
-            item_script_path = QtGui.QStandardItem("...\\" + folder_rel_path)
-
-            if script_path.lower().endswith(".py"):
-                item.setIcon(python_icon)
-            else:
-                item.setIcon(unknown_type_icon)
-
-            self.model.appendRow([item, item_script_path])
-
+        self.ui.scripts_TV.expandToDepth(self.default_expand_depth)
+        self.ui.scripts_TV.sortByColumn(0, QtCore.Qt.AscendingOrder)
         header = self.ui.scripts_TV.header()
         header.setSectionResizeMode(0, header.ResizeToContents)
+
+    def add_script_to_model(self, script_path, path_info):
+        path_root_dir = path_info.get(spu.lk.path_root_dir)
+        display_prefix = path_info.get(spu.lk.folder_display_prefix)
+
+        # display path in tree view
+        display_dir_rel_path = os.path.relpath(os.path.dirname(script_path), path_root_dir)
+        if display_prefix:
+            display_dir_rel_path = "{}\\{}".format(display_prefix, display_dir_rel_path)
+
+        parent_item = self.model
+
+        # build needed folders
+        folder_rel_split = display_dir_rel_path.split("\\")
+        for i, token in enumerate(folder_rel_split):
+            if token in [".", ""]:
+                continue
+
+            # combine together the token into a relative_path
+            token_rel_path = "\\".join(folder_rel_split[:i + 1])
+
+            # an Item for this folder has already been created
+            existing_folder_item = self._model_folders.get(token_rel_path)
+            if existing_folder_item is not None:
+                parent_item = existing_folder_item
+            else:
+                new_folder_item = QtGui.QStandardItem(str(token))
+                new_folder_item.setIcon(self.ui.icons.folder_icon)
+
+                # mark as folder for sorting model
+                folder_path_data = folder_model.PathData(token_rel_path, is_folder=True)
+                new_folder_item.setData(folder_path_data, QtCore.Qt.UserRole)
+
+                parent_item.appendRow(new_folder_item)
+                parent_item = new_folder_item
+                self._model_folders[token_rel_path] = new_folder_item
+
+        item = ScriptModelItem(script_path)
+        path_data = folder_model.PathData(script_path, is_folder=False)
+        item.setData(path_data, QtCore.Qt.UserRole)
+
+        if script_path.lower().endswith(".py"):
+            item.setIcon(self.ui.icons.python_icon)
+        else:
+            item.setIcon(self.ui.icons.unknown_type_icon)
+
+        parent_item.appendRow(item)
 
     def refresh_favorites(self):
         favorite_scripts = self.settings.get_value(ScriptPanelSettings.k_favorites, default=list())
@@ -187,6 +229,10 @@ class ScriptPanelWidget(QtWidgets.QWidget):
     def filter_scripts(self, text):
         search = QtCore.QRegExp(text, QtCore.Qt.CaseInsensitive, QtCore.QRegExp.RegExp)
         self.proxy.setFilterRegExp(search)
+        if not text:
+            self.ui.scripts_TV.expandToDepth(self.default_expand_depth)
+        else:
+            self.ui.scripts_TV.expandAll()
 
     def script_double_clicked(self, script_path):
         user_setting = self.settings.get_value(self.settings.k_double_click_action, spu.lk.run_script_on_click)
@@ -248,7 +294,7 @@ class ScriptWidget(QtWidgets.QWidget):
 
 
 class ScriptModelItem(QtGui.QStandardItem):
-    def __init__(self, script_path):
+    def __init__(self, script_path=None):
         super(ScriptModelItem, self).__init__()
         self.script_path = script_path.replace("/", "\\")
         self.script_name = os.path.basename(script_path)
@@ -269,11 +315,20 @@ class ScriptPanelWindow(ui_utils.BaseWindow):
         self.resize(1000, 1000)
 
 
+class Icons(object):
+    def __init__(self):
+        self.python_icon = ui_utils.create_qicon("python_icon")
+        self.unknown_type_icon = ui_utils.create_qicon("unknown_icon")
+        self.folder_icon = ui_utils.create_qicon("folder_icon")
+
+
 class ScriptPanelUI(QtWidgets.QWidget):
     script_double_clicked = QtCore.Signal(str)
 
     def __init__(self, *args, **kwargs):
         super(ScriptPanelUI, self).__init__(*args, **kwargs)
+
+        self.icons = Icons()  # putting this here because it needs to initialize after the QAppliaction
 
         main_layout = QtWidgets.QVBoxLayout()
         main_layout.setSpacing(2)
@@ -413,6 +468,8 @@ class ScriptFavoritesWidget(QtWidgets.QListWidget):
 
         if drop_event.mimeData().hasText():
             drop_text = drop_event.mimeData().text()
+            if not drop_text:
+                return
             for script_path in drop_text.split(", "):
                 self.script_dropped.emit(script_path)
         else:

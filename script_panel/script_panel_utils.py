@@ -1,3 +1,4 @@
+import json
 import os
 import runpy
 import sys
@@ -19,6 +20,11 @@ class LocalConstants:
     dcc_maya = "Maya"
     dcc_blender = "Maya"
     dcc_standalone = "Standalone"
+
+    env_key = "SCRIPT_PANEL_ROOT_FOLDERS"
+    path_root_dir = "root_dir"
+    default_indent = "default_indent"
+    folder_display_prefix = "folder_prefix"
 
 
 lk = LocalConstants
@@ -57,15 +63,70 @@ def file_triggered(file_path):
     trigger_func(file_path)
 
 
-def get_scripts():
-    # PLACEHOLDER
-    root_folders = os.environ.get("SCRIPT_PANEL_ROOT_FOLDERS", "").split(";")
-    if not any(root_folders):
-        root_folders = [r"D:\Google Drive\Scripting\_Scripts"]
+class EnvironmentData(object):
+    """
+    Handler class for environment properties
+    """
+
+    def __init__(self, env_str=None, env_key=None):
+        if not env_str:
+            env_str = os.environ.get(env_key, "")
+
+        env_data = get_data_from_string(env_str)
+
+        # set properties from json dict
+        self.path_data = env_data.get("paths", [])
+        self.default_expand_depth = env_data.get(lk.default_indent, 0)
+
+
+def get_data_from_string(env_str):
+    # if json data is in the env string, load info from that
+    if env_str.startswith('JSON - '):
+        env_data = json.loads(env_str.lstrip("JSON - "))
+    else:
+        # only folders specified in environment variable. extract the rest of the data from that
+        root_folders = env_str.split(";")
+        env_data = {}
+        paths = []
+        for root_folder in root_folders:
+            paths.append({root_folder})
+        env_data["paths"] = paths
+
+    return env_data
+
+
+def get_env_data():
+    """
+    find info about root paths from the environment variable
+
+    :return:
+    """
+    env_str = os.environ.get(lk.env_key, "")
+
+    # example formatted JSON str
+    if not env_str:
+        env_str = r"""JSON - {
+            "default_indent": 0,
+            "paths": [
+                {
+                    "root_folder": "D:\\Google Drive\\Scripting\\_Scripts",
+                    "folder_prefix": "Drive"
+                }
+            ]
+            }"""
+
+    return EnvironmentData(env_str=env_str)
+
+
+def get_scripts(env_data=None):
+    if not env_data:
+        env_data = get_env_data()  # type: EnvironmentData
 
     script_paths = OrderedDict()
+    for path_data in env_data.path_data:
+        root_folder = path_data.get("root_folder")
+        display_prefix = path_data.get(lk.folder_display_prefix)
 
-    for root_folder in root_folders:
         for folder, __, script_names in walk_func(root_folder):
             for script_name in script_names:
                 if not script_name.endswith(".py"):
@@ -74,7 +135,8 @@ def get_scripts():
                 full_script_path = full_script_path.replace("/", "\\")
 
                 script_paths[full_script_path] = {
-                    "root": root_folder,
+                    lk.path_root_dir: root_folder,
+                    lk.folder_display_prefix: display_prefix,
                 }
 
     return script_paths
