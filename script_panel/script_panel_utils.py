@@ -23,6 +23,7 @@ class LocalConstants:
 
     env_key = "SCRIPT_PANEL_ROOT_FOLDERS"
     path_root_dir = "root_dir"
+    root_type = "root_type"
     paths = "paths"
     default_indent = "default_indent"
     folder_display_prefix = "folder_prefix"
@@ -31,6 +32,7 @@ class LocalConstants:
 class PathInfoKeys:
     # keys for dicts being returned by get_scripts
     root_dir = "root"
+    root_type = "root_type"
     folder_prefix = "folder_prefix"
 
 
@@ -127,6 +129,7 @@ def get_scripts(env_data=None):
     script_paths = OrderedDict()
     for path_data in env_data.path_data:
         root_folder = path_data.get(lk.path_root_dir)
+        root_type = path_data.get(lk.root_type)
         display_prefix = path_data.get(lk.folder_display_prefix)
 
         for folder, __, script_names in walk_func(root_folder):
@@ -138,6 +141,7 @@ def get_scripts(env_data=None):
 
                 script_paths[full_script_path] = {
                     PathInfoKeys.root_dir: root_folder,
+                    PathInfoKeys.root_type: root_type,
                     PathInfoKeys.folder_prefix: display_prefix,
                 }
 

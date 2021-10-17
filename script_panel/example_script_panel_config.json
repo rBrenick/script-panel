@@ -3,8 +3,13 @@
   "paths": [
     {
       "root_dir": "D:\\Google Drive\\Scripting\\_Scripts",
-      "type": "local",
+      "root_type": "network",
       "folder_prefix": "Drive"
+    },
+    {
+      "root_dir": "C:\\Users\\Richa\\Perforce\\LocalWorkspace",
+      "root_type": "p4",
+      "folder_prefix": "AVersionControlledFolder"
     }
   ]
 }

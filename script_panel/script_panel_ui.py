@@ -152,12 +152,15 @@ class ScriptPanelWidget(QtWidgets.QWidget):
     def add_script_to_model(self, script_path, path_info):
         path_root_dir = path_info.get(spu.PathInfoKeys.root_dir)
         display_prefix = path_info.get(spu.PathInfoKeys.folder_prefix)
+        root_type = path_info.get(spu.PathInfoKeys.root_type)
 
         # display path in tree view
         display_dir_rel_path = os.path.relpath(os.path.dirname(script_path), path_root_dir)
         if display_prefix:
             display_dir_rel_path = "{}\\{}".format(display_prefix, display_dir_rel_path)
 
+        root_folder_icon = self.ui.icons.get_root_folder_icon_for_type(root_type)
+        folder_icon = self.ui.icons.get_folder_icon_for_type(root_type)
         parent_item = self.model
 
         # build needed folders
@@ -175,7 +178,9 @@ class ScriptPanelWidget(QtWidgets.QWidget):
                 parent_item = existing_folder_item
             else:
                 new_folder_item = QtGui.QStandardItem(str(token))
-                new_folder_item.setIcon(self.ui.icons.folder_icon)
+
+                # set special icon if this is the root folder
+                new_folder_item.setIcon(root_folder_icon) if i == 0 else new_folder_item.setIcon(folder_icon)
 
                 # mark as folder for sorting model
                 folder_path_data = folder_model.PathData(token_rel_path, is_folder=True)
@@ -189,10 +194,8 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         path_data = folder_model.PathData(script_path, is_folder=False)
         item.setData(path_data, QtCore.Qt.UserRole)
 
-        if script_path.lower().endswith(".py"):
-            item.setIcon(self.ui.icons.python_icon)
-        else:
-            item.setIcon(self.ui.icons.unknown_type_icon)
+        script_icon = self.ui.icons.get_script_icon_for_type(script_path, root_type)
+        item.setIcon(script_icon)
 
         parent_item.appendRow(item)
 
@@ -328,6 +331,42 @@ class Icons(object):
         self.unknown_type_icon = ui_utils.create_qicon("unknown_icon")
         self.folder_icon = ui_utils.create_qicon("folder_icon")
 
+        self.network_folder_icon = ui_utils.create_qicon("network_folder_icon")
+
+        self.p4_icon = ui_utils.create_qicon("p4_icon")
+        self.p4_folder_icon = ui_utils.create_qicon("p4_folder_icon")
+        self.p4_python_icon = ui_utils.create_qicon("p4_python_icon")
+
+    def get_folder_icon_for_type(self, folder_type):
+        """Get Icon for normal folders"""
+        if folder_type == "local" or folder_type == "network":
+            return self.folder_icon
+        if folder_type == "p4":
+            return self.p4_folder_icon
+
+        return self.unknown_type_icon
+
+    def get_root_folder_icon_for_type(self, folder_type):
+        """Get Icon to display as the root folder"""
+        if folder_type == "local":
+            return self.folder_icon
+        if folder_type == "network":
+            return self.network_folder_icon
+        if folder_type == "p4":
+            return self.p4_icon
+
+        return self.unknown_type_icon
+
+    def get_script_icon_for_type(self, file_name, folder_type):
+        """get icon for the script"""
+        if file_name.endswith(".py"):
+            if folder_type == "local" or folder_type == "network":
+                return self.python_icon
+            if folder_type == "p4":
+                return self.p4_python_icon
+
+        return self.unknown_type_icon
+
 
 class ScriptPanelUI(QtWidgets.QWidget):
     script_double_clicked = QtCore.Signal(str)
@@ -400,7 +439,8 @@ class ScriptPanelUI(QtWidgets.QWidget):
         model_index = proxy.mapToSource(index)
         script_item = proxy.sourceModel().itemFromIndex(model_index)  # type: ScriptModelItem
 
-        self.script_double_clicked.emit(script_item.script_path)
+        if isinstance(script_item, ScriptModelItem):
+            self.script_double_clicked.emit(script_item.script_path)
 
 
 # class FavoritesTextOverlay(QtWidgets.QWidget):
