@@ -33,7 +33,7 @@ def get_app_window():
         top_window = wrapInstance(long(maya_main_window_ptr), QtWidgets.QMainWindow)
 
     elif active_dcc_is_houdini:
-        import hou.qt
+        import hou
         top_window = hou.qt.mainWindow()
 
     return top_window
