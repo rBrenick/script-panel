@@ -155,7 +155,9 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         root_type = path_info.get(spu.PathInfoKeys.root_type)
 
         # display path in tree view
-        display_dir_rel_path = os.path.relpath(os.path.dirname(script_path), path_root_dir)
+        script_rel_path = os.path.relpath(script_path, path_root_dir)
+        dir_rel_path = os.path.relpath(os.path.dirname(script_path), path_root_dir)
+        display_dir_rel_path = dir_rel_path
         if display_prefix:
             display_dir_rel_path = "{}\\{}".format(display_prefix, display_dir_rel_path)
 
@@ -170,10 +172,12 @@ class ScriptPanelWidget(QtWidgets.QWidget):
                 continue
 
             # combine together the token into a relative_path
-            token_rel_path = "\\".join(folder_rel_split[:i + 1])
+            token_rel_display_path = "\\".join(folder_rel_split[:i + 1])
+            token_rel_real_path = "\\".join(folder_rel_split[1:i + 1]) if display_prefix else token_rel_display_path
+            token_full_path = os.path.join(path_root_dir, token_rel_real_path)
 
             # an Item for this folder has already been created
-            existing_folder_item = self._model_folders.get(token_rel_path)
+            existing_folder_item = self._model_folders.get(token_rel_display_path)
             if existing_folder_item is not None:
                 parent_item = existing_folder_item
             else:
@@ -183,15 +187,21 @@ class ScriptPanelWidget(QtWidgets.QWidget):
                 new_folder_item.setIcon(root_folder_icon) if i == 0 else new_folder_item.setIcon(folder_icon)
 
                 # mark as folder for sorting model
-                folder_path_data = folder_model.PathData(token_rel_path, is_folder=True)
+                folder_path_data = folder_model.PathData(relative_path=token_rel_real_path,
+                                                         full_path=token_full_path,
+                                                         is_folder=True,
+                                                         )
                 new_folder_item.setData(folder_path_data, QtCore.Qt.UserRole)
 
                 parent_item.appendRow(new_folder_item)
                 parent_item = new_folder_item
-                self._model_folders[token_rel_path] = new_folder_item
+                self._model_folders[token_rel_display_path] = new_folder_item
 
         item = ScriptModelItem(script_path)
-        path_data = folder_model.PathData(script_path, is_folder=False)
+        path_data = folder_model.PathData(relative_path=script_rel_path,
+                                          full_path=script_path,
+                                          is_folder=False,
+                                          )
         item.setData(path_data, QtCore.Qt.UserRole)
 
         script_icon = self.ui.icons.get_script_icon_for_type(script_path, root_type)
@@ -273,7 +283,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
     def open_script_in_explorer(self, script_path=None):
         if not script_path:
-            script_path = self.ui.scripts_TV.get_selected_script_paths()[0]
+            script_path = self.ui.scripts_TV.get_selected_script_paths(allow_folders=True)[0]
         subprocess.Popen(r'explorer /select, "{}"'.format(script_path))
 
 
@@ -475,18 +485,24 @@ class ScriptTreeView(QtWidgets.QTreeView):
 
         event.accept()
 
-    def get_selected_script_paths(self):
+    def get_selected_script_paths(self, allow_folders=False):
         proxy = self.model()  # type: QtCore.QSortFilterProxyModel
 
-        selected_script_paths = []
+        selected_paths = []
         for index in self.selectedIndexes():
             model_index = proxy.mapToSource(index)
-            script_item = proxy.sourceModel().itemFromIndex(model_index)  # type: ScriptModelItem
-            if not isinstance(script_item, ScriptModelItem):
-                continue
-            selected_script_paths.append(script_item.script_path)
+            path_data = proxy.sourceModel().data(model_index, QtCore.Qt.UserRole)  # type: folder_model.PathData
 
-        return selected_script_paths
+            selected_path = path_data.full_path
+
+            # skip folders if they're not allowed
+            if allow_folders is False and path_data.is_folder:
+                selected_path = None
+
+            if selected_path:
+                selected_paths.append(selected_path)
+
+        return selected_paths
 
 
 class ScriptFavoritesWidget(QtWidgets.QListWidget):

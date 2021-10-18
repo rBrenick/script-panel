@@ -138,7 +138,6 @@ def get_scripts(env_data=None):
 
     script_paths = OrderedDict()
     for path_data in env_data.path_data:
-        print(path_data)
         root_folder = path_data.get(lk.path_root_dir)
         if not root_folder:
             print("ROOT FOLDER NOT DEFINED: {}".format(env_data.raw_data))
