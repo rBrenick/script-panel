@@ -17,6 +17,7 @@ UI_FILES_FOLDER = os.path.dirname(__file__)
 ICON_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), "icons")
 
 active_dcc_is_maya = "maya" in os.path.basename(sys.executable).lower()
+active_dcc_is_houdini = "houdini" in os.path.basename(sys.executable).lower()
 
 """
 QT UTILS BEGIN
@@ -25,12 +26,16 @@ QT UTILS BEGIN
 
 def get_app_window():
     top_window = None
-    try:
+
+    if active_dcc_is_maya:
         from maya import OpenMayaUI as omui
         maya_main_window_ptr = omui.MQtUtil().mainWindow()
         top_window = wrapInstance(long(maya_main_window_ptr), QtWidgets.QMainWindow)
-    except ImportError as e:
-        pass
+
+    elif active_dcc_is_houdini:
+        import hou.qt
+        top_window = hou.qt.mainWindow()
+
     return top_window
 
 
