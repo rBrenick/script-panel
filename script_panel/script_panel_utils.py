@@ -78,6 +78,7 @@ class EnvironmentData(object):
     """
 
     def __init__(self, env_data):
+        self.raw_data = env_data
         self.path_data = env_data.get(lk.paths, [])
         self.default_expand_depth = env_data.get(lk.default_indent, 0)
 
@@ -92,7 +93,11 @@ def get_data_from_string(env_str):
         env_data = {}
         paths = []
         for root_folder in root_folders:
-            paths.append({root_folder})
+            paths.append({
+                lk.path_root_dir: root_folder,
+                lk.root_type: "local",
+                lk.folder_display_prefix: os.path.basename(root_folder)
+            })
         env_data[lk.paths] = paths
 
     return env_data
@@ -133,10 +138,14 @@ def get_scripts(env_data=None):
 
     script_paths = OrderedDict()
     for path_data in env_data.path_data:
+        print(path_data)
         root_folder = path_data.get(lk.path_root_dir)
+        if not root_folder:
+            print("ROOT FOLDER NOT DEFINED: {}".format(env_data.raw_data))
+            continue
+
         root_type = path_data.get(lk.root_type)
         display_prefix = path_data.get(lk.folder_display_prefix)
-
         for folder, __, script_names in walk_func(root_folder):
             for script_name in script_names:
                 if not script_name.endswith(".py"):
