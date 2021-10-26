@@ -564,6 +564,30 @@ class ScriptFavoritesWidget(QtWidgets.QListWidget):
     #     event.accept()
 
 
+def show_warning_path_does_not_exist(file_path):
+    """
+    Show a prompt when a script file does not exist anywhere on disk
+    """
+    msgbox = QtWidgets.QMessageBox(ui_utils.get_app_window())
+    msgbox.setIcon(QtWidgets.QMessageBox.Warning)
+    msgbox.setWindowTitle("File does not exist")
+    msgbox.setText("File could not be found at this location: \n{}".format(file_path))
+
+    msgbox.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.Cancel)
+    yes_button = msgbox.button(QtWidgets.QMessageBox.Yes)
+    yes_button.setText("Open Folder")
+    msgbox.exec_()
+
+    if msgbox.clickedButton() == yes_button:
+        folder_path = spu.get_existing_folder(file_path)
+
+        if not folder_path:
+            sys.stdout.write("No existing folder could be found anywhere from path: {}".format(file_path))
+            return
+
+        subprocess.Popen(r'explorer "{}"'.format(folder_path))
+
+
 def main(reload=False):
     standalone_app = None
     if not QtWidgets.QApplication.instance():

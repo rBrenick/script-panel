@@ -159,3 +159,26 @@ def get_scripts(env_data=None):
                 }
 
     return script_paths
+
+
+def get_existing_folder(src_path):
+    """
+    Look through folder hierarchy until an existing folder can be found
+    """
+
+    folder_path = os.path.dirname(src_path)
+
+    for i in range(30):
+        if os.path.exists(folder_path):
+            break
+
+        folder_above_that = os.path.dirname(folder_path)
+
+        # We've hit the root level folder, exit out
+        if folder_path == folder_above_that:
+            break
+
+        folder_path = folder_above_that
+
+    if os.path.exists(folder_path):
+        return folder_path

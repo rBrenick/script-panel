@@ -1,4 +1,7 @@
 # content
+import os.path
+
+
 def main(*args, **kwargs):
     from script_panel import script_panel_ui
     if kwargs.get("reload"):
@@ -35,3 +38,16 @@ def reload_modules():
     reload(script_panel_dcc_standalone)
     reload(script_panel_utils)
     reload(script_panel_ui)
+
+
+def trigger_file(file_path):
+    """
+    Small utility function to trigger via hotkeys and such things.
+    """
+    if not os.path.exists(file_path):
+        from . import script_panel_ui
+        script_panel_ui.show_warning_path_does_not_exist(file_path)
+        return
+
+    from . import script_panel_utils
+    script_panel_utils.file_triggered(file_path)
