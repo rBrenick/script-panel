@@ -106,6 +106,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         script_panel_context_actions = [
             {"Run": self.activate_script},
             {"Edit": self.open_script_in_editor},
+            {"Create Hotkey": self.open_hotkey_editor},
             "-",
             {"RADIO_SETTING": {"settings": self.settings,
                                "settings_key": self.settings.k_double_click_action,
@@ -281,6 +282,17 @@ class ScriptPanelWidget(QtWidgets.QWidget):
             script_path = self.ui.scripts_TV.get_selected_script_paths()[0]
         dcc_module.open_script(script_path)
 
+    def open_hotkey_editor(self, script_path=None):
+        if "setup_dcc_hotkey" not in dir(dcc_module):
+            print("Hotkey creation not defined for this DCC")
+            return
+
+        if not script_path:
+            script_path = self.ui.scripts_TV.get_selected_script_paths()[0]
+
+        from .ui import hotkey_editor
+        hotkey_editor.main(reload=True, script_path=script_path)
+
     def open_script_in_explorer(self, script_path=None):
         if not script_path:
             script_path = self.ui.scripts_TV.get_selected_script_paths(allow_folders=True)[0]
@@ -325,7 +337,7 @@ class ScriptModelItem(QtGui.QStandardItem):
 ###################################
 # General UI
 
-class ScriptPanelWindow(ui_utils.BaseWindow):
+class ScriptPanelWindow(ui_utils.ToolWindow):
     def __init__(self, *args, **kwargs):
         super(ScriptPanelWindow, self).__init__(*args, **kwargs)
 
@@ -594,7 +606,7 @@ def main(reload=False):
         standalone_app = QtWidgets.QApplication(sys.argv)
 
     win = ScriptPanelWindow()
-    win.show_ui(reload=reload)
+    win.main(reload=reload)
 
     if standalone_app:
         sys.exit(standalone_app.exec_())
