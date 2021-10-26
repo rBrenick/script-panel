@@ -70,7 +70,7 @@ class HotkeyEditorWindow(ui_utils.ToolWindow):
         shortcut = self.ui.shortcut_hotkey_LE.text()
         command_str = self.ui.hotkey_script_TE.toPlainText()
 
-        dcc_module.setup_dcc_hotkey(shortcut_name, shortcut, command_str, category="ScriptPanelScripts")
+        dcc_module.setup_dcc_hotkey(shortcut_name, shortcut, command_str, category="ScriptPanelCommands")
         sys.stdout.write("Hotkey created as a {}: {}\n".format(self.command_type, shortcut_name))
 
 
