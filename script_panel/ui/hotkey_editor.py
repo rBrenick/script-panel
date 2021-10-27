@@ -3,7 +3,7 @@ import sys
 import time
 
 from . import ui_utils
-from .ui_utils import QtWidgets
+from .ui_utils import QtWidgets, QtGui
 
 active_dcc_is_maya = "maya" in os.path.basename(sys.executable).lower()
 
@@ -98,10 +98,12 @@ class HotkeyEditorWidget(QtWidgets.QWidget):
 
         # script command text
         self.hotkey_script_TE = QtWidgets.QTextEdit()
+        self.hotkey_script_TE.setWordWrapMode(QtGui.QTextOption.NoWrap)
 
         # create hotkey button
         self.create_hotkey_BTN = QtWidgets.QPushButton("Create Hotkey")
         self.create_hotkey_BTN.setMinimumHeight(50)
+        self.create_hotkey_BTN.setStyleSheet("background-color:rgb(80, 150, 120)")
 
         self.main_layout.addWidget(self.shortcut_name_LE)
         self.main_layout.addWidget(self.command_type_CB)
