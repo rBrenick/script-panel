@@ -7,7 +7,8 @@ from . import script_panel_dcc_base
 class StandaloneInterface(script_panel_dcc_base.BaseInterface):
     name = "Standalone"
 
-    def open_script(self, script_path):
+    @staticmethod
+    def open_script(script_path):
         return open_script(script_path)
 
 

@@ -50,13 +50,14 @@ class ScriptPanelSortProxyModel(QtCore.QSortFilterProxyModel):
             if self.filterAcceptsRow(i, model_index):
                 return True
 
-        result = filter_regex.indexIn(path_data.path)
+        result = filter_regex.indexIn(path_data.relative_path)
         if result == -1:
             return False
         return True
 
 
 class PathData(object):
-    def __init__(self, path, is_folder=False):
-        self.path = path
+    def __init__(self, relative_path, full_path=None, is_folder=False):
+        self.relative_path = relative_path
+        self.full_path = full_path
         self.is_folder = is_folder

@@ -6,5 +6,9 @@ class BaseInterface(object):
         raise NotImplementedError("open_script requires implementation")
 
     @staticmethod
+    def setup_dcc_hotkey(*args, **kwargs):
+        raise NotImplementedError("create_hotkey requires implementation")
+
+    @staticmethod
     def get_dcc_extension_map():
         return dict()

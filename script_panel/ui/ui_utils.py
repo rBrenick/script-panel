@@ -2,6 +2,7 @@
 import os
 import sys
 import functools
+from functools import partial
 
 # Not even going to pretend to have Maya 2016 support
 from PySide2 import QtCore
@@ -17,6 +18,7 @@ UI_FILES_FOLDER = os.path.dirname(__file__)
 ICON_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), "icons")
 
 active_dcc_is_maya = "maya" in os.path.basename(sys.executable).lower()
+active_dcc_is_houdini = "houdini" in os.path.basename(sys.executable).lower()
 
 """
 QT UTILS BEGIN
@@ -25,12 +27,16 @@ QT UTILS BEGIN
 
 def get_app_window():
     top_window = None
-    try:
+
+    if active_dcc_is_maya:
         from maya import OpenMayaUI as omui
         maya_main_window_ptr = omui.MQtUtil().mainWindow()
         top_window = wrapInstance(long(maya_main_window_ptr), QtWidgets.QMainWindow)
-    except ImportError as e:
-        pass
+
+    elif active_dcc_is_houdini:
+        import hou
+        top_window = hou.qt.mainWindow()
+
     return top_window
 
 
@@ -70,8 +76,44 @@ def create_qicon(icon_path):
     return QtGui.QIcon(icon_path)
 
 
+class CoreToolWindow(QtWidgets.QMainWindow):
+    def __init__(self, parent=get_app_window()):
+        super(CoreToolWindow, self).__init__(parent)
+
+        self.ui = None
+        self.setWindowTitle(self.__class__.__name__)
+
+    def main(self, *args, **kwargs):
+        self.show()
+
+    #########################################################
+    # convenience functions to make a simple button layout
+
+    def ensure_main_layout(self):
+        if self.ui is None:
+            main_widget = QtWidgets.QWidget()
+            main_layout = QtWidgets.QVBoxLayout()
+            main_widget.setLayout(main_layout)
+            self.ui = main_widget
+            self.setCentralWidget(main_widget)
+
+    def add_button(self, text, command, clicked_args=None):
+        self.ensure_main_layout()
+
+        main_layout = self.ui.layout()
+
+        btn = QtWidgets.QPushButton(text)
+        btn.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+        main_layout.addWidget(btn)
+
+        if clicked_args:
+            btn.clicked.connect(partial(command, *clicked_args))
+        else:
+            btn.clicked.connect(command)
+
+
 class WindowCache:
-    window_instance = None
+    window_instances = {}
 
 
 if active_dcc_is_maya:
@@ -81,18 +123,21 @@ if active_dcc_is_maya:
     from maya import cmds
 
 
-    class BaseWindow(MayaQWidgetDockableMixin, QtWidgets.QMainWindow):
+    class ToolWindow(MayaQWidgetDockableMixin, CoreToolWindow):
         def __init__(self, parent=get_app_window()):
-            super(BaseWindow, self).__init__(parent=parent)
+            super(ToolWindow, self).__init__(parent=parent)
             self.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
+
             class_name = self.__class__.__name__
             self.setObjectName(class_name)
 
-        def show_ui(self, restore=False, reload=False):
-            if reload:
-                WindowCache.window_instance = None
+        def main(self, restore=False, reload=False):
+            object_name = self.objectName()
 
-                workspace_control_name = self.objectName() + "WorkspaceControl"
+            if reload:
+                WindowCache.window_instances.pop(object_name, None)
+
+                workspace_control_name = object_name + "WorkspaceControl"
                 if cmds.workspaceControl(workspace_control_name, q=True, exists=True):
                     cmds.workspaceControl(workspace_control_name, e=True, close=True)
                     cmds.deleteUI(workspace_control_name, control=True)
@@ -100,15 +145,15 @@ if active_dcc_is_maya:
             if restore:
                 restored_control = omui.MQtUtil.getCurrentParent()
 
-            launch_ui_script = "import {module}; {module}.{class_name}().show_ui(restore=True)".format(
+            launch_ui_script = "import {module}; {module}.{class_name}().main(restore=True)".format(
                 module=self.__class__.__module__,
                 class_name=self.__class__.__name__
             )
 
-            window_instance = WindowCache.window_instance
+            window_instance = WindowCache.window_instances.get(object_name)
             if not window_instance:
                 window_instance = self
-                WindowCache.window_instance = window_instance
+                WindowCache.window_instances[object_name] = window_instance
 
             if restore:
                 mixin_ptr = omui.MQtUtil.findControl(window_instance.objectName())
@@ -117,41 +162,13 @@ if active_dcc_is_maya:
                 window_instance.show(dockable=True, height=600, width=480, uiScript=launch_ui_script)
 
             return window_instance
-else:
-    # used for standalone and undefined window handling
-    class BaseWindow(QtWidgets.QMainWindow):
-        def __init__(self, parent=get_app_window(), ui_file_name=None):
-            delete_window(self)
-            super(BaseWindow, self).__init__(parent)
-
-            self.ui = None
-            if ui_file_name:
-                self.load_ui(ui_file_name)
-
-            self.set_tool_icon("script_panel_icon")
-
-        def set_tool_icon(self, icon_name):
-            icon = create_qicon(icon_name)
-            if icon:
-                self.setWindowIcon(icon)
-
-        def load_ui(self, ui_file_name):
-            self.ui = load_ui_file(ui_file_name)
-            self.setGeometry(self.ui.rect())
-            self.setWindowTitle(self.ui.property("windowTitle"))
-            self.setCentralWidget(self.ui)
-
-            parent_window = self.parent()
-            if not parent_window:
-                return
-
-            dcc_window_center = parent_window.mapToGlobal(parent_window.rect().center())
-            window_offset_x = dcc_window_center.x() - self.geometry().width() / 2
-            window_offset_y = dcc_window_center.y() - self.geometry().height() / 2
-            self.move(window_offset_x, window_offset_y)  # move to dcc screen center
 
         def show_ui(self, *args, **kwargs):
-            self.show()
+            """EXISTING WORKSPACES SAFETY - redirect calls from users who already have this window in their workspace"""
+            return self.main(*args, **kwargs)
+
+else:
+    ToolWindow = CoreToolWindow
 
 
 def build_menu_from_action_list(actions, menu=None, is_sub_menu=False):

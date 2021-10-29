@@ -17,6 +17,10 @@ except ImportError as e:
     print("Optional skyhook import failed: {}".format(e))
     sp_skyhook = None
 
+standalone_app = None
+if not QtWidgets.QApplication.instance():
+    standalone_app = QtWidgets.QApplication(sys.argv)
+
 dcc_interface = dcc.DCCInterface()
 
 
@@ -98,6 +102,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         script_panel_context_actions = [
             {"Run": self.activate_script},
             {"Edit": self.open_script_in_editor},
+            {"Create Hotkey": self.open_hotkey_editor},
             "-",
             {"RADIO_SETTING": {"settings": self.settings,
                                "settings_key": self.settings.k_double_click_action,
@@ -147,7 +152,9 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         root_type = path_info.get(spu.PathInfoKeys.root_type)
 
         # display path in tree view
-        display_dir_rel_path = os.path.relpath(os.path.dirname(script_path), path_root_dir)
+        script_rel_path = os.path.relpath(script_path, path_root_dir)
+        dir_rel_path = os.path.relpath(os.path.dirname(script_path), path_root_dir)
+        display_dir_rel_path = dir_rel_path
         if display_prefix:
             display_dir_rel_path = "{}\\{}".format(display_prefix, display_dir_rel_path)
 
@@ -162,10 +169,12 @@ class ScriptPanelWidget(QtWidgets.QWidget):
                 continue
 
             # combine together the token into a relative_path
-            token_rel_path = "\\".join(folder_rel_split[:i + 1])
+            token_rel_display_path = "\\".join(folder_rel_split[:i + 1])
+            token_rel_real_path = "\\".join(folder_rel_split[1:i + 1]) if display_prefix else token_rel_display_path
+            token_full_path = os.path.join(path_root_dir, token_rel_real_path)
 
             # an Item for this folder has already been created
-            existing_folder_item = self._model_folders.get(token_rel_path)
+            existing_folder_item = self._model_folders.get(token_rel_display_path)
             if existing_folder_item is not None:
                 parent_item = existing_folder_item
             else:
@@ -175,15 +184,21 @@ class ScriptPanelWidget(QtWidgets.QWidget):
                 new_folder_item.setIcon(root_folder_icon) if i == 0 else new_folder_item.setIcon(folder_icon)
 
                 # mark as folder for sorting model
-                folder_path_data = folder_model.PathData(token_rel_path, is_folder=True)
+                folder_path_data = folder_model.PathData(relative_path=token_rel_real_path,
+                                                         full_path=token_full_path,
+                                                         is_folder=True,
+                                                         )
                 new_folder_item.setData(folder_path_data, QtCore.Qt.UserRole)
 
                 parent_item.appendRow(new_folder_item)
                 parent_item = new_folder_item
-                self._model_folders[token_rel_path] = new_folder_item
+                self._model_folders[token_rel_display_path] = new_folder_item
 
         item = ScriptModelItem(script_path)
-        path_data = folder_model.PathData(script_path, is_folder=False)
+        path_data = folder_model.PathData(relative_path=script_rel_path,
+                                          full_path=script_path,
+                                          is_folder=False,
+                                          )
         item.setData(path_data, QtCore.Qt.UserRole)
 
         script_icon = icons.get_script_icon_for_type(script_path, root_type)
@@ -260,9 +275,16 @@ class ScriptPanelWidget(QtWidgets.QWidget):
             script_path = self.ui.scripts_TV.get_selected_script_paths()[0]
         dcc_interface.open_script(script_path)
 
-    def open_script_in_explorer(self, script_path=None):
+    def open_hotkey_editor(self, script_path=None):
         if not script_path:
             script_path = self.ui.scripts_TV.get_selected_script_paths()[0]
+
+        from .ui import hotkey_editor
+        hotkey_editor.main(reload=True, script_path=script_path)
+
+    def open_script_in_explorer(self, script_path=None):
+        if not script_path:
+            script_path = self.ui.scripts_TV.get_selected_script_paths(allow_folders=True)[0]
         subprocess.Popen(r'explorer /select, "{}"'.format(script_path))
 
 
@@ -303,7 +325,7 @@ class ScriptModelItem(QtGui.QStandardItem):
 ###################################
 # General UI
 
-class ScriptPanelWindow(ui_utils.BaseWindow):
+class ScriptPanelWindow(ui_utils.ToolWindow):
     def __init__(self, *args, **kwargs):
         super(ScriptPanelWindow, self).__init__(*args, **kwargs)
 
@@ -357,6 +379,9 @@ class Icons(object):
             return self.mel_icon
 
         return self.unknown_type_icon
+
+
+icons = Icons()
 
 
 class ScriptPanelUI(QtWidgets.QWidget):
@@ -464,18 +489,24 @@ class ScriptTreeView(QtWidgets.QTreeView):
 
         event.accept()
 
-    def get_selected_script_paths(self):
+    def get_selected_script_paths(self, allow_folders=False):
         proxy = self.model()  # type: QtCore.QSortFilterProxyModel
 
-        selected_script_paths = []
+        selected_paths = []
         for index in self.selectedIndexes():
             model_index = proxy.mapToSource(index)
-            script_item = proxy.sourceModel().itemFromIndex(model_index)  # type: ScriptModelItem
-            if not isinstance(script_item, ScriptModelItem):
-                continue
-            selected_script_paths.append(script_item.script_path)
+            path_data = proxy.sourceModel().data(model_index, QtCore.Qt.UserRole)  # type: folder_model.PathData
 
-        return selected_script_paths
+            selected_path = path_data.full_path
+
+            # skip folders if they're not allowed
+            if allow_folders is False and path_data.is_folder:
+                selected_path = None
+
+            if selected_path:
+                selected_paths.append(selected_path)
+
+        return selected_paths
 
 
 class ScriptFavoritesWidget(QtWidgets.QListWidget):
@@ -534,21 +565,33 @@ class ScriptFavoritesWidget(QtWidgets.QListWidget):
     #     event.accept()
 
 
-# set proper class for autocomplete
-icons = Icons
+def show_warning_path_does_not_exist(file_path):
+    """
+    Show a prompt when a script file does not exist anywhere on disk
+    """
+    msgbox = QtWidgets.QMessageBox(ui_utils.get_app_window())
+    msgbox.setIcon(QtWidgets.QMessageBox.Warning)
+    msgbox.setWindowTitle("File does not exist")
+    msgbox.setText("File could not be found at this location: \n{}".format(file_path))
+
+    msgbox.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.Cancel)
+    yes_button = msgbox.button(QtWidgets.QMessageBox.Yes)
+    yes_button.setText("Open Folder")
+    msgbox.exec_()
+
+    if msgbox.clickedButton() == yes_button:
+        folder_path = spu.get_existing_folder(file_path)
+
+        if not folder_path:
+            sys.stdout.write("No existing folder could be found anywhere from path: {}".format(file_path))
+            return
+
+        subprocess.Popen(r'explorer "{}"'.format(folder_path))
 
 
 def main(reload=False):
-    standalone_app = None
-    if not QtWidgets.QApplication.instance():
-        standalone_app = QtWidgets.QApplication(sys.argv)
-
-    # initialize Icons class after QApplication
-    global icons
-    icons = Icons()
-
     win = ScriptPanelWindow()
-    win.show_ui(reload=reload)
+    win.main(reload=reload)
 
     if standalone_app:
         sys.exit(standalone_app.exec_())

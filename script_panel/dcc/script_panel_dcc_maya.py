@@ -1,13 +1,10 @@
 import os
 
 import pymel.core as pm
+from maya import cmds
 from maya import mel
 
 from . import script_panel_dcc_base
-
-DCC_EXTENSIONS = {
-    ".mel"
-}
 
 
 class MayaInterface(script_panel_dcc_base.BaseInterface):
@@ -20,8 +17,13 @@ class MayaInterface(script_panel_dcc_base.BaseInterface):
         }
         return extension_map
 
-    def open_script(self, script_path):
+    @staticmethod
+    def open_script(script_path):
         return open_script(script_path)
+
+    @staticmethod
+    def setup_dcc_hotkey(*args, **kwargs):
+        return setup_dcc_hotkey(*args, **kwargs)
 
 
 def open_script(script_path):
@@ -84,3 +86,46 @@ def run_mel_script(script_path):
     with open(script_path, "r") as fp:
         mel_script = fp.read()
     return mel.eval(mel_script)
+
+
+def setup_dcc_hotkey(shortcut_name, shortcut, command_str, category="Custom"):
+    """
+    Create a hotkey command
+    if a shortcut is provided, connect the command to that shortcut
+    """
+    hotkey_set_name = "UserHotkeys"
+
+    # make sure we have a user editable hotkey set active
+    if not cmds.about(batch=True):
+        if cmds.hotkeySet(current=True, q=True) == "Maya_Default":
+            if not cmds.hotkeySet(hotkey_set_name, exists=True):
+                cmds.hotkeySet(hotkey_set_name, source="Maya_Default")
+            cmds.hotkeySet(hotkey_set_name, edit=True, current=True)
+
+    name_command = '{0}Command'.format(shortcut_name)
+
+    if cmds.runTimeCommand(shortcut_name, exists=True):
+        cmds.runTimeCommand(shortcut_name, edit=True, delete=True)
+
+    cmds.runTimeCommand(
+        shortcut_name,
+        command=command_str,
+        annotation="Generated Hotkey - Launch {}".format(shortcut_name),
+        category=category,
+    )
+
+    cmds.nameCommand(
+        name_command,
+        command=shortcut_name,
+        annotation="Generated Hotkey - Launch {}".format(shortcut_name),
+    )
+
+    if shortcut:
+        shortcut_key = shortcut.split("+")[-1].lower()
+        cmds.hotkey(
+            name=name_command,
+            keyShortcut=shortcut_key,
+            ctl="ctrl" in shortcut.lower(),
+            alt="alt" in shortcut.lower(),
+            sht="shift" in shortcut.lower(),
+        )
