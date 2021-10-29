@@ -18,7 +18,7 @@ common_startup()
 # ---------------------------------- !common startup site handling -----------------------------------
 
 try:
-    import script_panel.script_panel_dcc_setup
-    script_panel.script_panel_dcc_setup.startup()
+    import script_panel
+    script_panel.startup()
 except Exception as e:
     print(e)

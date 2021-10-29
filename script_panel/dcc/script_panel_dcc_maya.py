@@ -1,6 +1,27 @@
 import os
 
 import pymel.core as pm
+from maya import mel
+
+from . import script_panel_dcc_base
+
+DCC_EXTENSIONS = {
+    ".mel"
+}
+
+
+class MayaInterface(script_panel_dcc_base.BaseInterface):
+    name = "Maya"
+
+    @staticmethod
+    def get_dcc_extension_map():
+        extension_map = {
+            ".mel": run_mel_script
+        }
+        return extension_map
+
+    def open_script(self, script_path):
+        return open_script(script_path)
 
 
 def open_script(script_path):
@@ -57,3 +78,9 @@ def hookup_tab_signals(cmd_exec):
     pm.cmdScrollFieldExecuter(cmd_exec, e=True,
                               modificationChangedCommand=lambda x: pm.mel.executerTabModificationChanged(x))
     pm.cmdScrollFieldExecuter(cmd_exec, e=True, fileChangedCommand=lambda x: pm.mel.executerTabFileChanged(x))
+
+
+def run_mel_script(script_path):
+    with open(script_path, "r") as fp:
+        mel_script = fp.read()
+    return mel.eval(mel_script)

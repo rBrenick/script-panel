@@ -5,27 +5,19 @@ import os.path
 import subprocess
 import sys
 
+from script_panel import dcc
 from script_panel import script_panel_utils as spu
 from script_panel.ui import folder_model
 from script_panel.ui import ui_utils
 from script_panel.ui.ui_utils import QtCore, QtWidgets, QtGui
 
 try:
-    from script_panel import script_panel_skyhook as sp_skyhook
+    from script_panel.dcc import script_panel_skyhook as sp_skyhook
 except ImportError as e:
     print("Optional skyhook import failed: {}".format(e))
     sp_skyhook = None
 
-active_dcc_is_maya = "maya" in os.path.basename(sys.executable).lower()
-
-if active_dcc_is_maya:
-    from . import script_panel_dcc_maya as dcc_module
-
-    dcc_name = "Maya"
-else:
-    from . import script_panel_dcc_standalone as dcc_module
-
-    dcc_name = "Standalone"
+dcc_interface = dcc.DCCInterface()
 
 
 class ScriptPanelSettings(QtCore.QSettings):
@@ -37,7 +29,7 @@ class ScriptPanelSettings(QtCore.QSettings):
         super(ScriptPanelSettings, self).__init__(
             QtCore.QSettings.IniFormat,
             QtCore.QSettings.UserScope,
-            "script_panel", "script_panel_{}".format(dcc_name.lower()),
+            "script_panel", "script_panel_{}".format(dcc_interface.name.lower()),
             *args, **kwargs)
 
     def get_value(self, key, default=None):
@@ -159,8 +151,8 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         if display_prefix:
             display_dir_rel_path = "{}\\{}".format(display_prefix, display_dir_rel_path)
 
-        root_folder_icon = self.ui.icons.get_root_folder_icon_for_type(root_type)
-        folder_icon = self.ui.icons.get_folder_icon_for_type(root_type)
+        root_folder_icon = icons.get_root_folder_icon_for_type(root_type)
+        folder_icon = icons.get_folder_icon_for_type(root_type)
         parent_item = self.model
 
         # build needed folders
@@ -194,7 +186,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         path_data = folder_model.PathData(script_path, is_folder=False)
         item.setData(path_data, QtCore.Qt.UserRole)
 
-        script_icon = self.ui.icons.get_script_icon_for_type(script_path, root_type)
+        script_icon = icons.get_script_icon_for_type(script_path, root_type)
         item.setIcon(script_icon)
 
         parent_item.appendRow(item)
@@ -264,12 +256,9 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         spu.file_triggered(script_path)
 
     def open_script_in_editor(self, script_path=None):
-        if "open_script" not in dir(dcc_module):
-            print("Editor open not defined for this DCC")
-            return
         if not script_path:
             script_path = self.ui.scripts_TV.get_selected_script_paths()[0]
-        dcc_module.open_script(script_path)
+        dcc_interface.open_script(script_path)
 
     def open_script_in_explorer(self, script_path=None):
         if not script_path:
@@ -290,9 +279,8 @@ class ScriptWidget(QtWidgets.QWidget):
         btn.setText(os.path.basename(script_path))
         btn.clicked.connect(self.activate_script)
 
-        if self.script_path.lower().endswith(".py"):
-            python_icon = ui_utils.create_qicon("python_icon")
-            btn.setIcon(python_icon)
+        script_icon = icons.get_script_icon_for_type(script_path)
+        btn.setIcon(script_icon)
 
         main_layout = QtWidgets.QHBoxLayout()
         main_layout.addWidget(btn)
@@ -328,6 +316,7 @@ class ScriptPanelWindow(ui_utils.BaseWindow):
 class Icons(object):
     def __init__(self):
         self.python_icon = ui_utils.create_qicon("python_icon")
+        self.mel_icon = ui_utils.create_qicon("mel_icon")
         self.unknown_type_icon = ui_utils.create_qicon("unknown_icon")
         self.folder_icon = ui_utils.create_qicon("folder_icon")
 
@@ -357,13 +346,15 @@ class Icons(object):
 
         return self.unknown_type_icon
 
-    def get_script_icon_for_type(self, file_name, folder_type):
+    def get_script_icon_for_type(self, file_name, folder_type=""):
         """get icon for the script"""
         if file_name.endswith(".py"):
-            if folder_type == "local" or folder_type == "network":
-                return self.python_icon
             if folder_type == "p4":
                 return self.p4_python_icon
+            return self.python_icon
+
+        elif file_name.endswith(".mel"):
+            return self.mel_icon
 
         return self.unknown_type_icon
 
@@ -373,8 +364,6 @@ class ScriptPanelUI(QtWidgets.QWidget):
 
     def __init__(self, *args, **kwargs):
         super(ScriptPanelUI, self).__init__(*args, **kwargs)
-
-        self.icons = Icons()  # putting this here because it needs to initialize after the QAppliaction
 
         main_layout = QtWidgets.QVBoxLayout()
         main_layout.setSpacing(2)
@@ -537,21 +526,26 @@ class ScriptFavoritesWidget(QtWidgets.QListWidget):
         self.remove_favorites.emit(self.get_selected_script_paths())
 
     def open_script_in_editor(self):
-        if "open_script" not in dir(dcc_module):
-            print("Editor open not defined for this DCC")
-            return
         for script_path in self.get_selected_script_paths():
-            dcc_module.open_script(script_path)
+            dcc_interface.open_script(script_path)
 
     # def resizeEvent(self, event):
     #     self.overlay_widget.resize(event.size())
     #     event.accept()
 
 
+# set proper class for autocomplete
+icons = Icons
+
+
 def main(reload=False):
     standalone_app = None
     if not QtWidgets.QApplication.instance():
         standalone_app = QtWidgets.QApplication(sys.argv)
+
+    # initialize Icons class after QApplication
+    global icons
+    icons = Icons()
 
     win = ScriptPanelWindow()
     win.show_ui(reload=reload)

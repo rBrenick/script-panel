@@ -4,6 +4,10 @@ import runpy
 import sys
 from collections import OrderedDict
 
+from script_panel import dcc
+
+dcc_interface = dcc.DCCInterface()
+
 if sys.version_info.major < 3:
     try:
         from scandir import walk as walk_func
@@ -39,22 +43,25 @@ class PathInfoKeys:
 lk = LocalConstants
 
 
-def undefined_extension_func(file_path):
-    file_ext = os.path.splitext(file_path)[-1]
-    print("Action needed for extension: {}".format(file_ext))
-
-
 def run_python_script(script_path):
     runpy.run_path(script_path, init_globals=globals(), run_name="__main__")
 
 
 EXTENSION_MAP = {
-    ".py": run_python_script
+    ".py": run_python_script,
 }
+
+# add DCC specific extensions
+EXTENSION_MAP.update(dcc_interface.get_dcc_extension_map())
 
 
 def add_extension_func_to_map(extension, func):
     EXTENSION_MAP[extension] = func
+
+
+def undefined_extension_func(file_path):
+    file_ext = os.path.splitext(file_path)[-1]
+    print("Action needed for extension: {}".format(file_ext))
 
 
 def get_file_triggered_func(file_path):
@@ -127,6 +134,13 @@ def get_env_data():
     return EnvironmentData(env_data)
 
 
+def has_valid_script_extension(script_name):
+    for ext in EXTENSION_MAP.keys():
+        if script_name.endswith(ext):
+            return True
+    return False
+
+
 def get_scripts(env_data=None):
     if not env_data:
         env_data = get_env_data()  # type: EnvironmentData
@@ -139,7 +153,7 @@ def get_scripts(env_data=None):
 
         for folder, __, script_names in walk_func(root_folder):
             for script_name in script_names:
-                if not script_name.endswith(".py"):
+                if not has_valid_script_extension(script_name):
                     continue
                 full_script_path = os.path.join(folder, script_name)
                 full_script_path = full_script_path.replace("/", "\\")

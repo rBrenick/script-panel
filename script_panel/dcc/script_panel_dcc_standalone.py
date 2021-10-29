@@ -1,6 +1,15 @@
 import os
 import subprocess
 
+from . import script_panel_dcc_base
+
+
+class StandaloneInterface(script_panel_dcc_base.BaseInterface):
+    name = "Standalone"
+
+    def open_script(self, script_path):
+        return open_script(script_path)
+
 
 def open_script(script_path):
     notepad_plus_path = r"C:\Program Files\Notepad++\notepad++.exe"
