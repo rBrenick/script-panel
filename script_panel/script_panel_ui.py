@@ -98,25 +98,8 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.ui.favorites_LW.order_updated.connect(self.save_favorites_layout)
         self.ui.favorites_LW.remove_favorites.connect(self.remove_scripts_from_favorites)
 
-        # right click menu
-        script_panel_context_actions = [
-            {"Run": self.activate_script},
-            {"Edit": self.open_script_in_editor},
-            {"Create Hotkey": self.open_hotkey_editor},
-            "-",
-            {"RADIO_SETTING": {"settings": self.settings,
-                               "settings_key": self.settings.k_double_click_action,
-                               "choices": [spu.lk.run_script_on_click, spu.lk.edit_script_on_click],
-                               "default": spu.lk.run_script_on_click,
-                               }},
-            "-",
-            {"Show In Explorer": self.open_script_in_explorer},
-        ]
-
         self.ui.scripts_TV.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-        self.ui.scripts_TV.customContextMenuRequested.connect(
-            lambda: ui_utils.build_menu_from_action_list(script_panel_context_actions)
-        )
+        self.ui.scripts_TV.customContextMenuRequested.connect(self.build_context_menu)
 
         # build ui
         self.refresh_favorites()
@@ -126,6 +109,30 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         main_layout = QtWidgets.QVBoxLayout()
         main_layout.addWidget(self.ui)
         self.setLayout(main_layout)
+
+    def build_context_menu(self):
+        script_is_selected = any(self.ui.scripts_TV.get_selected_script_paths())
+
+        # right click menu
+        script_panel_context_actions = []
+        if script_is_selected:
+            script_panel_context_actions.extend([
+                {"Run": self.activate_script},
+                {"Edit": self.open_script_in_editor},
+                {"Create Hotkey": self.open_hotkey_editor},
+                "-",
+            ])
+
+        script_panel_context_actions.extend([
+            {"RADIO_SETTING": {"settings": self.settings,
+                               "settings_key": self.settings.k_double_click_action,
+                               "choices": [spu.lk.run_script_on_click, spu.lk.edit_script_on_click],
+                               "default": spu.lk.run_script_on_click,
+                               }},
+            "-",
+            {"Show In Explorer": self.open_script_in_explorer},
+        ])
+        ui_utils.build_menu_from_action_list(script_panel_context_actions)
 
     def load_settings(self):
         if sp_skyhook:
