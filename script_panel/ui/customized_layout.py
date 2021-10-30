@@ -1,183 +1,193 @@
+import math
 import sys
-import random
-from script_panel.ui.ui_utils import QtCore, QtWidgets
+
+from script_panel.ui.ui_utils import QtCore, QtGui, QtWidgets, BaseSettings
 
 
-class CustomizedLayout(QtWidgets.QListWidget):
-    def __init__(self):
-        super(CustomizedLayout, self).__init__()
+# class ControlView(QtWidgets.QGraphicsView):
+#     """
+#     Base class to create the control view
+#     """
+#
+#     def __init__(self, scene, parent):
+#         """
+#         @param scene: QGraphicsScene that defines the scene we want to visualize
+#         @param parent: QWidget parent
+#         """
+#         super(ControlView, self).__init__(parent)
+#
+#         self.setObjectName('ControlView')
+#         self.setScene(scene)
+#         self.setRenderHint(QtGui.QPainter.Antialiasing)
+#         self.setTransformationAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
+#         self.setViewportUpdateMode(QtWidgets.QGraphicsView.SmartViewportUpdate)
+#
+#         self.setAcceptDrops(True)
+#         self.setDragMode(QtWidgets.QGraphicsView.ScrollHandDrag)
+#
+#         self.dragOver = False
+#
+#     def dragMoveEvent(self, event):
+#         pass
+#
+#     def dragEnterEvent(self, event):
+#         if event.mimeData().hasText():
+#             event.setAccepted(True)
+#             self.dragOver = True
+#             self.update()
+#
+#     def dropEvent(self, event):
+#         pos = event.pos()
+#         event.acceptProposedAction()
 
-        self.setFlow(self.LeftToRight)
-        self.setResizeMode(self.Adjust)
-        self.setGridSize(QtCore.QSize(256, 256))
-        self.setViewMode(self.IconMode)
-        self.setSpacing(0)
-
-
-class CommandButton(QtWidgets.QPushButton):
+class CustomScene(QtWidgets.QGraphicsScene):
     def __init__(self, *args, **kwargs):
-        super(CommandButton, self).__init__(*args, **kwargs)
+        super(CustomScene, self).__init__(*args, **kwargs)
+        self._background_color = QtGui.QColor(50, 50, 50)
+        self._background_color_light = QtGui.QColor(100, 100, 100)
 
-        self.setSizePolicy(
-            QtWidgets.QSizePolicy.MinimumExpanding,
-            QtWidgets.QSizePolicy.MinimumExpanding,
-        )
+        self.grid_size = 80
+        self.grid_pen = QtGui.QPen(self._background_color_light)
+        self.grid_pen.setWidth(5)
+
+        self.setBackgroundBrush(self._background_color)
+
+    def drawBackground(self, painter, rect):
+        super(CustomScene, self).drawBackground(painter, rect)
+        left = int(math.floor(rect.left()))
+        right = int(math.ceil(rect.right()))
+        top = int(math.floor(rect.top()))
+        bottom = int(math.ceil(rect.bottom()))
+
+        first_left = left - (left % self.grid_size)
+        first_top = top - (top % self.grid_size)
+
+        grid_lines = []
+        for i in range(first_left, right, self.grid_size):
+            grid_lines.append(QtCore.QLine(i, top, i, bottom))
+
+        for i in range(first_top, bottom, self.grid_size):
+            grid_lines.append(QtCore.QLine(left, i, right, i))
+
+        painter.setPen(self.grid_pen)
+        painter.drawLines(grid_lines)
 
 
-class FlowLayout(QtWidgets.QLayout):
-    """Custom layout that mimics the behaviour of a flow layout"""
+class GraphicsProxyWidget(QtWidgets.QGraphicsProxyWidget):
+    def __init__(self, *args, **kwargs):
+        super(GraphicsProxyWidget, self).__init__(*args, **kwargs)
 
-    def __init__(self, parent=None, margin=0, spacing=-1):
-        """Create a new FlowLayout instance.
-        This layout will reorder the items automatically.
-        @param parent (QWidget)
-        @param margin (int)
-        @param spacing (int)"""
-        super(FlowLayout, self).__init__(parent)
-        # Set margin and spacing
-        if parent is not None: self.setMargin(margin)
-        self.setSpacing(spacing)
 
-        self.itemList = []
+class GraphicsRectItem(QtWidgets.QGraphicsRectItem):
+    def __init__(self, id, *args, **kwargs):
+        super(GraphicsRectItem, self).__init__(*args, **kwargs)
 
-    def __del__(self):
-        """Delete all the items in this layout"""
-        item = self.takeAt(0)
-        while item:
-            item = self.takeAt(0)
+        self.id = id
+        self.header_height = 40
 
-    def addItem(self, item):
-        """Add an item at the end of the layout.
-        This is automatically called when you do addWidget()
-        item (QWidgetItem)"""
-        self.itemList.append(item)
+        self.setFlag(QtWidgets.QGraphicsItem.ItemIsMovable, True)
+        self.setFlag(QtWidgets.QGraphicsItem.ItemSendsGeometryChanges, True)
+        self.setBrush(QtCore.Qt.darkGray)
 
-    def count(self):
-        """Get the number of items in the this layout
-        @return (int)"""
-        return len(self.itemList)
+        self.proxy_widget = GraphicsProxyWidget(self)
+        self.text_item = QtWidgets.QGraphicsTextItem(self)
+        self.text_item.setPlainText(id)
 
-    def itemAt(self, index):
-        """Get the item at the given index
-        @param index (int)
-        @return (QWidgetItem)"""
-        if index >= 0 and index < len(self.itemList):
-            return self.itemList[index]
-        return None
+    def wrap_widget(self, widget):
+        widget.setGeometry(0, 0, self.rect().width(), self.rect().height() - self.header_height)
+        self.proxy_widget.setWidget(widget)
+        self.proxy_widget.setPos(0, self.header_height)
 
-    def takeAt(self, index):
-        """Remove an item at the given index
-        @param index (int)
-        @return (None)"""
-        if index >= 0 and index < len(self.itemList):
-            return self.itemList.pop(index)
-        return None
+    def snap_pos_to_grid(self, pos):
+        """
+        :type pos:  QtCore.QPointF
+        """
+        grid_size = self.scene().grid_size
 
-    def insertWidget(self, index, widget):
-        """Insert a widget at a given index
-        @param index (int)
-        @param widget (QWidget)"""
-        item = QtWidgets.QWidgetItem(widget)
-        self.itemList.insert(index, item)
+        pos.setX(round(pos.x() / grid_size) * grid_size)
+        pos.setY(round(pos.y() / grid_size) * grid_size)
 
-    def expandingDirections(self):
-        """This layout grows only in the horizontal dimension"""
-        return QtCore.Qt.Horizontal
+        return pos
 
-    def hasHeightForWidth(self):
-        """If this layout's preferred height depends on its width
-        @return (boolean) Always True"""
-        return True
+    def itemChange(self, change, value):
+        if change == self.ItemPositionChange and self.scene():
+            value = self.snap_pos_to_grid(value)
 
-    def heightForWidth(self, width):
-        """Get the preferred height a layout item with the given width
-        @param width (int)"""
-        height = self.doLayout(QtCore.QRect(0, 0, width, 0), True)
-        return height
+        return super(GraphicsRectItem, self).itemChange(change, value)
 
-    def setGeometry(self, rect):
-        """Set the geometry of this layout
-        @param rect (QRect)"""
-        super(FlowLayout, self).setGeometry(rect)
-        self.doLayout(rect, False)
 
-    def sizeHint(self):
-        """Get the preferred size of this layout
-        @return (QSize) The minimum size"""
-        return self.minimumSize()
-
-    def minimumSize(self):
-        """Get the minimum size of this layout
-        @return (QSize)"""
-        # Calculate the size
-        size = QtCore.QSize()
-        for item in self.itemList:
-            size = size.expandedTo(item.minimumSize())
-        # Add the margins
-        size += QtCore.QSize(2 * self.margin(), 2 * self.margin())
-        return size
-
-    def doLayout(self, rect, testOnly):
-        """Layout all the items
-        @param rect (QRect) Rect where in the items have to be laid out
-        @param testOnly (boolean) Do the actual layout"""
-        x = rect.x()
-        y = rect.y()
-        lineHeight = 0
-
-        for item in self.itemList:
-            spaceX = self.spacing()
-            spaceY = self.spacing()
-            nextX = x + item.sizeHint().width() + spaceX
-            if nextX - spaceX > rect.right() and lineHeight > 0:
-                x = rect.x()
-                y = y + lineHeight + spaceY
-                nextX = x + item.sizeHint().width() + spaceX
-                lineHeight = 0
-
-            if not testOnly:
-                item.setGeometry(QtCore.QRect(QtCore.QPoint(x, y), item.sizeHint()))
-
-            x = nextX
-            lineHeight = max(lineHeight, item.sizeHint().height())
-
-        return y + lineHeight - rect.y()
+class CommandPanelSettings(BaseSettings):
+    def __init__(self, *args, **kwargs):
+        super(CommandPanelSettings, self).__init__(
+            QtCore.QSettings.IniFormat,
+            QtCore.QSettings.UserScope,
+            "command_panel", "command_panel_settings",
+            *args, **kwargs)
 
 
 class ExampleWindow(QtWidgets.QMainWindow):
     def __init__(self, *args, **kwargs):
         super(ExampleWindow, self).__init__(*args, **kwargs)
 
-        # main_widget = CustomizedLayout()
-        # self.setCentralWidget(main_widget)
+        self.settings = CommandPanelSettings()
 
-        scroll_area = QtWidgets.QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        main_widget = QtWidgets.QWidget()
-        flow_layout = FlowLayout(main_widget)
+        menu_bar = QtWidgets.QMenuBar()
+        layout_menu = menu_bar.addMenu("Layout")
+        layout_menu.addAction("Save Layout", self.save_layout)
+        layout_menu.addAction("Load Layout", self.load_layout)
+        self.setMenuBar(menu_bar)
 
-        ratios = [
-            [100, 100],
-            [100, 100],
-            [200, 100],
-            [200, 200],
-        ]
+        self.scene = CustomScene()
+        self.scene_items = []
 
-        for i in range(50):
-            btn = CommandButton("BTN_{}".format(i))
-            btn.setFixedSize(*random.choice(ratios))
-            flow_layout.addWidget(btn)
-        scroll_area.setWidget(main_widget)
-        self.setCentralWidget(scroll_area)
+        # set main widget to scene
+        main_widget = QtWidgets.QGraphicsView(self)
+        main_widget.setScene(self.scene)
+        self.setCentralWidget(main_widget)
 
-        # for i in range(20):
-        #     btn = CommandButton()
-        #     btn.setText("BTN_{}".format(i))
+        self.create_test_items()
+        self.load_layout()
 
-            # list_widget_item = QtWidgets.QListWidgetItem()
-            # list_widget_item.setSizeHint(btn.sizeHint())
-            # main_widget.addItem(list_widget_item)
-            # main_widget.setItemWidget(list_widget_item, btn)
+    def save_layout(self):
+        user_layout = {}
+        for scene_item in self.scene_items:  # type: GraphicsRectItem
+            user_layout[scene_item.id] = scene_item.pos()
+        self.settings.setValue("user_layout", user_layout)
+
+    def load_layout(self):
+        user_layout = self.settings.get_value("user_layout", default={})  # type: dict
+        for scene_item in self.scene_items:  # type: GraphicsRectItem
+            user_pos = user_layout.get(scene_item.id)
+            if user_pos:
+                scene_item.setPos(user_pos)
+
+    def add_widget(self, id, widget, pos):
+        rect_item = GraphicsRectItem(id, 0, 0, self.scene.grid_size * 3, self.scene.grid_size * 3)
+        rect_item.id = id
+        rect_item.wrap_widget(widget)
+        self.scene.addItem(rect_item)
+        if pos:
+            rect_item.setPos(rect_item.snap_pos_to_grid(QtCore.QPoint(*pos)))
+        self.scene_items.append(rect_item)
+        return rect_item
+
+    def create_test_items(self):
+        for i in range(4):
+            btn_text = "Hello_{}".format(i)
+            btn = QtWidgets.QPushButton(btn_text)
+
+            self.add_widget(
+                id="COMMAND_{:03d}".format(i),
+                widget=btn,
+                pos=[i * 200, i * 200],
+            )
+
+        # rect = self.scene.addRect(20, 20, 60, 60, QtGui.QPen(), QtGui.QBrush(QtCore.Qt.green))
+        # rect.setFlag(QtWidgets.QGraphicsItem.ItemIsMovable)
+
+    def closeEvent(self, event):
+        self.save_layout()
+        super(ExampleWindow, self).closeEvent(event)
 
 
 if __name__ == '__main__':

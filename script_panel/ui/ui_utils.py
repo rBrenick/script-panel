@@ -25,6 +25,32 @@ QT UTILS BEGIN
 """
 
 
+class BaseSettings(QtCore.QSettings):
+    def get_value(self, key, default=None):
+        data_type = None
+        if default is not None:
+            data_type = type(default)
+
+        settings_val = self.value(key, defaultValue=default)
+
+        if data_type == list and not isinstance(settings_val, list):
+            settings_val = [settings_val] if settings_val else list()
+
+        if data_type == dict and not isinstance(settings_val, dict):
+            settings_val = dict(settings_val)
+
+        if data_type == int and not isinstance(settings_val, int):
+            settings_val = default if settings_val is None else int(settings_val)
+
+        if data_type == float and not isinstance(settings_val, float):
+            settings_val = default if settings_val is None else float(settings_val)
+
+        if data_type == bool:
+            settings_val = True if settings_val in ("true", "True", "1", 1, True) else False
+
+        return settings_val
+
+
 def get_app_window():
     top_window = None
 
