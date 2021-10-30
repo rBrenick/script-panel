@@ -84,6 +84,8 @@ class GraphicsRectItem(QtWidgets.QGraphicsRectItem):
 
         self.id = id
         self.header_height = 40
+        self._being_resized = False
+        self.widget = None
 
         self.setFlag(QtWidgets.QGraphicsItem.ItemIsMovable, True)
         self.setFlag(QtWidgets.QGraphicsItem.ItemSendsGeometryChanges, True)
@@ -93,20 +95,59 @@ class GraphicsRectItem(QtWidgets.QGraphicsRectItem):
         self.text_item = QtWidgets.QGraphicsTextItem(self)
         self.text_item.setPlainText(id)
 
-    def wrap_widget(self, widget):
-        widget.setGeometry(0, 0, self.rect().width(), self.rect().height() - self.header_height)
-        self.proxy_widget.setWidget(widget)
+    def set_widget_geometry(self):
+        self.widget.setGeometry(0, 0, self.rect().width(), self.rect().height() - self.header_height - 20)
         self.proxy_widget.setPos(0, self.header_height)
+
+    def wrap_widget(self, widget):
+        self.widget = widget
+        self.proxy_widget.setWidget(widget)
+        self.set_widget_geometry()
+
+    def pos_within_resize_handle(self, pos):
+        if pos.x() > self.rect().width() - 30:
+            if pos.y() > self.rect().height() - 30:
+                return True
+        return False
+
+    def mousePressEvent(self, event):
+        """
+        :type event: QtWidgets.QGraphicsSceneMouseEvent
+        """
+        if event.type() == QtCore.QEvent.Type.GraphicsSceneMousePress:
+            if self.pos_within_resize_handle(event.pos()):
+                self._being_resized = True
+        return super(GraphicsRectItem, self).mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        self._being_resized = False
+        super(GraphicsRectItem, self).mouseReleaseEvent(event)
+
+    def mouseMoveEvent(self, event):
+        """
+        :type event: QtWidgets.QGraphicsSceneMouseEvent
+        """
+        if self._being_resized:
+            snapped_pos = self.snap_pos_to_grid(event.pos())
+            self.set_size([snapped_pos.x(), snapped_pos.y()])
+            return
+
+        return super(GraphicsRectItem, self).mouseMoveEvent(event)
+
+    def set_size(self, size):
+        rect = self.rect()
+        rect.setWidth(size[0])
+        rect.setHeight(size[1])
+        self.setRect(rect)
+        self.set_widget_geometry()
 
     def snap_pos_to_grid(self, pos):
         """
         :type pos:  QtCore.QPointF
         """
         grid_size = self.scene().grid_size
-
         pos.setX(round(pos.x() / grid_size) * grid_size)
         pos.setY(round(pos.y() / grid_size) * grid_size)
-
         return pos
 
     def itemChange(self, change, value):
@@ -151,15 +192,23 @@ class ExampleWindow(QtWidgets.QMainWindow):
     def save_layout(self):
         user_layout = {}
         for scene_item in self.scene_items:  # type: GraphicsRectItem
-            user_layout[scene_item.id] = scene_item.pos()
+            user_layout[scene_item.id] = {
+                "pos": scene_item.pos(),
+                "size": [scene_item.rect().width(), scene_item.rect().height()],
+            }
+
         self.settings.setValue("user_layout", user_layout)
 
     def load_layout(self):
         user_layout = self.settings.get_value("user_layout", default={})  # type: dict
         for scene_item in self.scene_items:  # type: GraphicsRectItem
-            user_pos = user_layout.get(scene_item.id)
+            layout_info = user_layout.get(scene_item.id)  # type: dict
+            user_pos = layout_info.get("pos")
             if user_pos:
                 scene_item.setPos(user_pos)
+            user_size = layout_info.get("size")
+            if user_size:
+                scene_item.set_size(user_size)
 
     def add_widget(self, id, widget, pos):
         rect_item = GraphicsRectItem(id, 0, 0, self.scene.grid_size * 3, self.scene.grid_size * 3)
