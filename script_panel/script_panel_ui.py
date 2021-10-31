@@ -76,11 +76,20 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.ui.save_palette_BTN.clicked.connect(self.save_favorites_layout)
         self.ui.load_palette_BTN.clicked.connect(self.refresh_favorites)
 
+        # right click menus
         self.ui.scripts_TV.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.ui.scripts_TV.customContextMenuRequested.connect(self.build_context_menu)
 
         self.ui.command_palette_widget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.ui.command_palette_widget.customContextMenuRequested.connect(self.build_palette_context_menu)
+
+        # shortcuts
+        del_hotkey = QtWidgets.QShortcut(
+            QtGui.QKeySequence("DEL"),
+            self.ui.command_palette_widget.graphics_view,
+            self.remove_scripts_from_favorites,
+        )
+        del_hotkey.setContext(QtCore.Qt.WidgetShortcut)
 
         # build ui
         self.refresh_favorites()
@@ -204,24 +213,24 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
     def refresh_favorites(self):
         favorite_scripts = self.settings.get_value(ScriptPanelSettings.k_favorites, default=list())
-        user_layout = self.settings.get_value(ScriptPanelSettings.k_favorites_layout, default=dict())
 
         self.ui.command_palette_widget.clear()
 
-        # first add favorite scripts
         for script_path in favorite_scripts:
             self.add_favorite_widget(script_path)
 
+        user_layout = self.settings.get_value(ScriptPanelSettings.k_favorites_layout, default=dict())
         self.ui.command_palette_widget.set_scene_layout(user_layout)
 
     def add_script_to_favorites(self, script_path):
         self.settings.add_to_favorites(script_path)
         self.add_favorite_widget(script_path)
 
-    def remove_scripts_from_favorites(self, script_paths):
-        for script_path in script_paths:
-            self.settings.remove_from_favorites(script_path)
-        self.refresh_favorites()
+    def remove_scripts_from_favorites(self):
+        for item in self.ui.command_palette_widget.get_selected_items():  # type: command_palette.PaletteRectItem
+            script_widget = item.wrapped_widget  # type: ScriptWidget
+            self.settings.remove_from_favorites(script_widget.script_path)
+        self.ui.command_palette_widget.remove_selected_items()
 
     def add_favorite_widget(self, script_path):
         script_widget = ScriptWidget(script_path)
@@ -297,7 +306,8 @@ class ScriptWidget(QtWidgets.QWidget):
 
         self.script_path = script_path
 
-        btn = QtWidgets.QPushButton(parent=self)
+        btn = QtWidgets.QToolButton(parent=self)
+        btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
         btn.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
         btn.setText(os.path.basename(script_path))
         btn.clicked.connect(self.activate_script)
@@ -307,7 +317,7 @@ class ScriptWidget(QtWidgets.QWidget):
 
         main_layout = QtWidgets.QHBoxLayout()
         main_layout.addWidget(btn)
-        main_layout.setContentsMargins(20, 2, 20, 2)
+        main_layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(main_layout)
 
     def activate_script(self):

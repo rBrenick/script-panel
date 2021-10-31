@@ -96,6 +96,7 @@ class PaletteGraphicsView(QtWidgets.QGraphicsView):
             | QtGui.QPainter.SmoothPixmapTransform
         )
         self.setViewportUpdateMode(self.FullViewportUpdate)
+        self.setDragMode(self.RubberBandDrag)
 
     def keyPressEvent(self, event):
         if not event.isAutoRepeat() and event.key() == QtCore.Qt.Key_Space:
@@ -178,7 +179,8 @@ class PaletteRectItem(QtWidgets.QGraphicsRectItem):
         self.header_height = 40
         self.resize_handle_size = 30
         self._being_resized = False
-        self._wrapped_widget = None
+        self.wrapped_widget = None
+        self.is_selected = False
 
         self.setFlag(QtWidgets.QGraphicsItem.ItemIsMovable, True)
         self.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, True)
@@ -194,12 +196,18 @@ class PaletteRectItem(QtWidgets.QGraphicsRectItem):
 
     def set_widget_geometry(self):
         box_width, box_height = self.rect().width(), self.rect().height()
-        self._wrapped_widget.setGeometry(0, 0, box_width, box_height - self.header_height)
+        self.wrapped_widget.setGeometry(0, 0, box_width, box_height - self.header_height)
         self.proxy_widget.setPos(0, self.header_height)
         self.resize_button.setPos(box_width - self.resize_handle_size, box_height - self.resize_handle_size)
 
+    def update_brush(self):
+        if self.is_selected:
+            self.setBrush(QtCore.Qt.white)
+        else:
+            self.setBrush(QtCore.Qt.darkGray)
+
     def wrap_widget(self, widget):
-        self._wrapped_widget = widget
+        self.wrapped_widget = widget
         self.proxy_widget.setWidget(widget)
         self.set_widget_geometry()
 
@@ -232,7 +240,9 @@ class PaletteRectItem(QtWidgets.QGraphicsRectItem):
     def itemChange(self, change, value):
         if change == self.ItemPositionChange and self.scene():
             value = self.snap_pos_to_grid(value)
-
+        if change == self.ItemSelectedChange and self.scene():
+            self.is_selected = bool(value)
+            self.update_brush()
         return super(PaletteRectItem, self).itemChange(change, value)
 
 
@@ -292,9 +302,18 @@ class CommandPaletteWidget(QtWidgets.QWidget):
         self._scene_items = []
         self.scene_widgets = []
 
+    def remove_selected_items(self):
+        for scene_item in self.get_selected_items():  # type: PaletteRectItem
+            self.scene.removeItem(scene_item)
+            self.scene_widgets.remove(scene_item.wrapped_widget)
+            self._scene_items.remove(scene_item)
+
     def get_mouse_pos(self):
         scene_cursor_pos = self.graphics_view.mapFromGlobal(self.graphics_view.cursor().pos())
         return scene_cursor_pos.toTuple()
+
+    def get_selected_items(self):
+        return [item for item in self._scene_items if item.is_selected]
 
 
 class CommandPanelSettings(BaseSettings):
