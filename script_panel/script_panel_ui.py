@@ -30,6 +30,7 @@ class ScriptPanelSettings(ui_utils.BaseSettings):
     k_favorites = "favorites"
     k_favorites_layout = "favorites_layout"
     k_favorites_display = "favorites_display"
+    k_palette_display = "palette_display"
     k_double_click_action = "double_click_action"
     k_skyhook_enabled = "skyhook_enabled"
 
@@ -153,7 +154,9 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
         action_list = [
             {"Edit": self.open_favorites_script_in_editor},
-            {"Remove from favorites": self.remove_scripts_from_favorites}
+            {"Remove from favorites": self.remove_scripts_from_favorites},
+            {"Hide Headers": self.ui.command_palette_widget.hide_headers},
+            {"Show Headers": self.ui.command_palette_widget.show_headers},
         ]
 
         if selected_script_widget:
@@ -175,6 +178,8 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         if sp_skyhook:
             skyhook_enabled = self.settings.get_value(self.settings.k_skyhook_enabled, default=False)
             self.ui.skyhook_blender_CHK.setChecked(skyhook_enabled)
+        palette_display_settings = self.settings.get_value(ScriptPanelSettings.k_palette_display, default=dict())
+        self.ui.command_palette_widget.set_ui_settings(palette_display_settings)
 
     def refresh_scripts(self):
         self.model.clear()
@@ -303,6 +308,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.settings.setValue(self.settings.k_favorites, favorite_scripts)
         self.settings.setValue(self.settings.k_favorites_layout, user_layout)
         self.settings.setValue(self.settings.k_favorites_display, scripts_display_info)
+        self.settings.setValue(self.settings.k_palette_display, self.ui.command_palette_widget.get_ui_settings())
         print("Layout Saved")
 
     def filter_scripts(self, text):
@@ -361,8 +367,7 @@ class ScriptWidget(QtWidgets.QWidget):
         self.display_color = None
         self.icon_path = None
 
-        self.trigger_btn = QtWidgets.QToolButton(parent=self)
-        self.trigger_btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
+        self.trigger_btn = QtWidgets.QPushButton(parent=self)
         self.trigger_btn.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
         self.trigger_btn.setText(self.script_name)
         self.trigger_btn.clicked.connect(self.activate_script)
@@ -663,60 +668,60 @@ class ScriptTreeView(QtWidgets.QTreeView):
         return selected_paths
 
 
-class ScriptFavoritesWidget(QtWidgets.QListWidget):
-    script_dropped = QtCore.Signal(str)
-    order_updated = QtCore.Signal()
-    remove_favorites = QtCore.Signal(list)
+# class ScriptFavoritesWidget(QtWidgets.QListWidget):
+#     script_dropped = QtCore.Signal(str)
+#     order_updated = QtCore.Signal()
+#     remove_favorites = QtCore.Signal(list)
+#
+#     def __init__(self, *args, **kwargs):
+#         super(ScriptFavoritesWidget, self).__init__(*args, **kwargs)
+#
+#         del_hotkey = QtWidgets.QShortcut(QtGui.QKeySequence("DEL"), self, self.remove_scripts_from_favorites)
+#         del_hotkey.setContext(QtCore.Qt.WidgetShortcut)
+#
+#         # right click menu
+#         action_list = [
+#             {"Edit": self.open_script_in_editor},
+#             {"Remove from favorites": self.remove_scripts_from_favorites}
+#         ]
+#
+#         self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+#         self.customContextMenuRequested.connect(lambda: ui_utils.build_menu_from_action_list(action_list))
+#
+#     def dropEvent(self, *args, **kwargs):
+#
+#         drop_event = args[0]  # type: QtGui.QDropEvent
+#
+#         if drop_event.mimeData().hasText():
+#             drop_text = drop_event.mimeData().text()
+#             if not drop_text:
+#                 return
+#             for script_path in drop_text.split(", "):
+#                 self.script_dropped.emit(script_path)
+#         else:
+#             if type(drop_event.source()) == ScriptTreeView:
+#                 return
+#             drop_event.setDropAction(QtCore.Qt.MoveAction)
+#             super(ScriptFavoritesWidget, self).dropEvent(*args, **kwargs)
+#             self.order_updated.emit()
+#
+#     def get_selected_script_paths(self):
+#         script_paths = []
+#         for lwi in self.selectedItems():  # type: QtWidgets.QListWidgetItem
+#             script_widget = self.itemWidget(lwi)  # type:ScriptWidget
+#             script_paths.append(script_widget.script_path)
+#         return script_paths
+#
+#     def remove_scripts_from_favorites(self):
+#         self.remove_favorites.emit(self.get_selected_script_paths())
+#
+#     def open_script_in_editor(self):
+#         for script_path in self.get_selected_script_paths():
+#             dcc_interface.open_script(script_path)
 
-    def __init__(self, *args, **kwargs):
-        super(ScriptFavoritesWidget, self).__init__(*args, **kwargs)
-
-        del_hotkey = QtWidgets.QShortcut(QtGui.QKeySequence("DEL"), self, self.remove_scripts_from_favorites)
-        del_hotkey.setContext(QtCore.Qt.WidgetShortcut)
-
-        # right click menu
-        action_list = [
-            {"Edit": self.open_script_in_editor},
-            {"Remove from favorites": self.remove_scripts_from_favorites}
-        ]
-
-        self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-        self.customContextMenuRequested.connect(lambda: ui_utils.build_menu_from_action_list(action_list))
-
-    def dropEvent(self, *args, **kwargs):
-
-        drop_event = args[0]  # type: QtGui.QDropEvent
-
-        if drop_event.mimeData().hasText():
-            drop_text = drop_event.mimeData().text()
-            if not drop_text:
-                return
-            for script_path in drop_text.split(", "):
-                self.script_dropped.emit(script_path)
-        else:
-            if type(drop_event.source()) == ScriptTreeView:
-                return
-            drop_event.setDropAction(QtCore.Qt.MoveAction)
-            super(ScriptFavoritesWidget, self).dropEvent(*args, **kwargs)
-            self.order_updated.emit()
-
-    def get_selected_script_paths(self):
-        script_paths = []
-        for lwi in self.selectedItems():  # type: QtWidgets.QListWidgetItem
-            script_widget = self.itemWidget(lwi)  # type:ScriptWidget
-            script_paths.append(script_widget.script_path)
-        return script_paths
-
-    def remove_scripts_from_favorites(self):
-        self.remove_favorites.emit(self.get_selected_script_paths())
-
-    def open_script_in_editor(self):
-        for script_path in self.get_selected_script_paths():
-            dcc_interface.open_script(script_path)
-
-    # def resizeEvent(self, event):
-    #     self.overlay_widget.resize(event.size())
-    #     event.accept()
+# def resizeEvent(self, event):
+#     self.overlay_widget.resize(event.size())
+#     event.accept()
 
 
 def show_warning_path_does_not_exist(file_path):

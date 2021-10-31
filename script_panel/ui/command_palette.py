@@ -201,6 +201,7 @@ class PaletteRectItem(QtWidgets.QGraphicsRectItem):
 
         self.id = id
         self.header_height = 40
+        self.show_header = True
         self.resize_handle_size = 30
         self._being_resized = False
         self.wrapped_widget = None
@@ -219,9 +220,13 @@ class PaletteRectItem(QtWidgets.QGraphicsRectItem):
         self.text_item.setPlainText(id)
 
     def set_widget_geometry(self):
+        header_height = self.header_height if self.show_header else 0
         box_width, box_height = self.rect().width(), self.rect().height()
-        self.wrapped_widget.setGeometry(0, 0, box_width, box_height - self.header_height)
-        self.proxy_widget.setPos(0, self.header_height)
+
+        self.text_item.show() if self.show_header else self.text_item.hide()
+
+        self.wrapped_widget.setGeometry(0, 0, box_width, box_height - header_height)
+        self.proxy_widget.setPos(0, header_height)
         self.resize_button.setPos(box_width - self.resize_handle_size, box_height - self.resize_handle_size)
 
     def update_brush(self):
@@ -274,6 +279,8 @@ class CommandPaletteWidget(QtWidgets.QWidget):
     def __init__(self, *args, **kwargs):
         super(CommandPaletteWidget, self).__init__(*args, **kwargs)
 
+        self._display_headers = True
+
         self._scene_items = []
         self.scene_widgets = []
 
@@ -286,6 +293,14 @@ class CommandPaletteWidget(QtWidgets.QWidget):
         # set ui
         self.main_layout.addWidget(self.graphics_view)
         self.setLayout(self.main_layout)
+
+    def get_ui_settings(self):
+        return {
+            "show_headers": self._display_headers
+        }
+
+    def set_ui_settings(self, ui_data):
+        self.display_headers(ui_data.get("show_headers", True))
 
     def add_widget(self, id, widget, pos=None):
         rect_item = PaletteRectItem(id, 0, 0, self.scene.grid_size * 3, self.scene.grid_size * 3)
@@ -332,6 +347,18 @@ class CommandPaletteWidget(QtWidgets.QWidget):
             self.scene_widgets.remove(scene_item.wrapped_widget)
             self._scene_items.remove(scene_item)
 
+    def hide_headers(self):
+        self.display_headers(False)
+
+    def show_headers(self):
+        self.display_headers(True)
+
+    def display_headers(self, state):
+        self._display_headers = state
+        for scene_item in self._scene_items:  # type: PaletteRectItem
+            scene_item.show_header = state
+            scene_item.set_widget_geometry()
+
     def get_mouse_pos(self):
         cursor = QtGui.QCursor()
         scene_cursor_pos = self.graphics_view.mapFromGlobal(cursor.pos())
@@ -366,8 +393,8 @@ class ExampleWindow(QtWidgets.QMainWindow):
 
         menu_bar = QtWidgets.QMenuBar()
         layout_menu = menu_bar.addMenu("Layout")
-        layout_menu.addAction("Save Layout", self.save_layout)
-        layout_menu.addAction("Load Layout", self.load_layout)
+        layout_menu.addAction("Save Layout", self.save_layout, QtGui.QKeySequence("CTRL+S"))
+        layout_menu.addAction("Reload Layout", self.load_layout, QtGui.QKeySequence("CTRL+R"))
         self.setMenuBar(menu_bar)
 
         self.command_palette_system = CommandPaletteSystem()
@@ -392,7 +419,8 @@ class ExampleWindow(QtWidgets.QMainWindow):
     def create_test_items(self):
         for i in range(4):
             btn_text = "Hello_{}".format(i)
-            btn = QtWidgets.QPushButton(btn_text)
+            btn = QtWidgets.QToolButton()
+            btn.setText(btn_text)
             btn.clicked.connect(test_func)
 
             self.command_palette_widget.add_widget(
