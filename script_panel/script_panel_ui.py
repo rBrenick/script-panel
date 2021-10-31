@@ -7,6 +7,7 @@ import sys
 
 from script_panel import dcc
 from script_panel import script_panel_utils as spu
+from script_panel.ui import command_palette
 from script_panel.ui import folder_model
 from script_panel.ui import ui_utils
 from script_panel.ui.ui_utils import QtCore, QtWidgets, QtGui
@@ -24,8 +25,9 @@ if not QtWidgets.QApplication.instance():
 dcc_interface = dcc.DCCInterface()
 
 
-class ScriptPanelSettings(QtCore.QSettings):
+class ScriptPanelSettings(ui_utils.BaseSettings):
     k_favorites = "favorites"
+    k_favorites_layout = "favorites_layout"
     k_double_click_action = "double_click_action"
     k_skyhook_enabled = "skyhook_enabled"
 
@@ -35,30 +37,6 @@ class ScriptPanelSettings(QtCore.QSettings):
             QtCore.QSettings.UserScope,
             "script_panel", "script_panel_{}".format(dcc_interface.name.lower()),
             *args, **kwargs)
-
-    def get_value(self, key, default=None):
-        data_type = None
-        if default is not None:
-            data_type = type(default)
-
-        settings_val = self.value(key, defaultValue=default)
-
-        if data_type == list and not isinstance(settings_val, list):
-            settings_val = [settings_val] if settings_val else list()
-
-        if data_type == dict and not isinstance(settings_val, dict):
-            settings_val = dict(settings_val)
-
-        if data_type == int and not isinstance(settings_val, int):
-            settings_val = default if settings_val is None else int(settings_val)
-
-        if data_type == float and not isinstance(settings_val, float):
-            settings_val = default if settings_val is None else float(settings_val)
-
-        if data_type == bool:
-            settings_val = True if settings_val in ("true", "True", "1", 1, True) else False
-
-        return settings_val
 
     def add_to_favorites(self, script_path):
         favorites = self.get_value(self.k_favorites, default=list())
@@ -94,12 +72,15 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.ui.search_LE.textChanged.connect(self.filter_scripts)
         self.ui.refresh_BTN.clicked.connect(self.refresh_scripts)
         self.ui.script_double_clicked.connect(self.script_double_clicked)
-        self.ui.favorites_LW.script_dropped.connect(self.add_script_to_favorites)
-        self.ui.favorites_LW.order_updated.connect(self.save_favorites_layout)
-        self.ui.favorites_LW.remove_favorites.connect(self.remove_scripts_from_favorites)
+        self.ui.script_dropped_in_favorites.connect(self.add_script_to_favorites)
+        self.ui.save_palette_BTN.clicked.connect(self.save_favorites_layout)
+        self.ui.load_palette_BTN.clicked.connect(self.refresh_favorites)
 
         self.ui.scripts_TV.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.ui.scripts_TV.customContextMenuRequested.connect(self.build_context_menu)
+
+        self.ui.command_palette_widget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.ui.command_palette_widget.customContextMenuRequested.connect(self.build_palette_context_menu)
 
         # build ui
         self.refresh_favorites()
@@ -133,6 +114,14 @@ class ScriptPanelWidget(QtWidgets.QWidget):
             {"Show In Explorer": self.open_script_in_explorer},
         ])
         ui_utils.build_menu_from_action_list(script_panel_context_actions)
+
+    def build_palette_context_menu(self):
+        action_list = [
+            {"Edit": self.open_script_in_editor},
+            {"Remove from favorites": self.remove_scripts_from_favorites}
+        ]
+
+        ui_utils.build_menu_from_action_list(action_list)
 
     def load_settings(self):
         if sp_skyhook:
@@ -215,16 +204,19 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
     def refresh_favorites(self):
         favorite_scripts = self.settings.get_value(ScriptPanelSettings.k_favorites, default=list())
+        user_layout = self.settings.get_value(ScriptPanelSettings.k_favorites_layout, default=dict())
 
-        self.ui.favorites_LW.clear()
+        self.ui.command_palette_widget.clear()
 
         # first add favorite scripts
         for script_path in favorite_scripts:
             self.add_favorite_widget(script_path)
 
+        self.ui.command_palette_widget.set_scene_layout(user_layout)
+
     def add_script_to_favorites(self, script_path):
         self.settings.add_to_favorites(script_path)
-        self.refresh_favorites()
+        self.add_favorite_widget(script_path)
 
     def remove_scripts_from_favorites(self, script_paths):
         for script_path in script_paths:
@@ -235,20 +227,22 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         script_widget = ScriptWidget(script_path)
         script_widget.script_clicked.connect(self.activate_script)
 
-        lwi = QtWidgets.QListWidgetItem()
-        lwi.setSizeHint(script_widget.sizeHint())
-        self.ui.favorites_LW.addItem(lwi)
-        self.ui.favorites_LW.setItemWidget(lwi, script_widget)
+        script_id = os.path.basename(script_path)
+        self.ui.command_palette_widget.add_widget(
+            id=script_id,
+            widget=script_widget,
+            pos=self.ui.command_palette_widget.get_mouse_pos(),
+        )
 
     def save_favorites_layout(self):
-        # get order of widgets in list
-        items = [self.ui.favorites_LW.item(i) for i in range(self.ui.favorites_LW.count())]
-        favorites = []
-        for lwi in items:
-            item = self.ui.favorites_LW.itemWidget(lwi)  # type: ScriptWidget
-            favorites.append(item.script_path)
+        favorite_scripts = []
+        for script_widget in self.ui.command_palette_widget.scene_widgets:  # type: ScriptWidget
+            favorite_scripts.append(script_widget.script_path)
 
-        self.settings.setValue(self.settings.k_favorites, favorites)
+        user_layout = self.ui.command_palette_widget.get_scene_layout()
+
+        self.settings.setValue(self.settings.k_favorites, favorite_scripts)
+        self.settings.setValue(self.settings.k_favorites_layout, user_layout)
 
     def filter_scripts(self, text):
         search = QtCore.QRegExp(text, QtCore.Qt.CaseInsensitive, QtCore.QRegExp.RegExp)
@@ -304,7 +298,7 @@ class ScriptWidget(QtWidgets.QWidget):
         self.script_path = script_path
 
         btn = QtWidgets.QPushButton(parent=self)
-        btn.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+        btn.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
         btn.setText(os.path.basename(script_path))
         btn.clicked.connect(self.activate_script)
 
@@ -393,6 +387,7 @@ icons = Icons()
 
 class ScriptPanelUI(QtWidgets.QWidget):
     script_double_clicked = QtCore.Signal(str)
+    script_dropped_in_favorites = QtCore.Signal(str)
 
     def __init__(self, *args, **kwargs):
         super(ScriptPanelUI, self).__init__(*args, **kwargs)
@@ -408,16 +403,8 @@ class ScriptPanelUI(QtWidgets.QWidget):
 
         self.refresh_BTN = QtWidgets.QPushButton("Refresh")
 
-        self.favorites_LW = ScriptFavoritesWidget()
-        self.favorites_LW.setSelectionMode(QtWidgets.QListWidget.ExtendedSelection)
-        self.favorites_LW.setDropIndicatorShown(True)
-        self.favorites_LW.setAcceptDrops(True)
-        self.favorites_LW.setDragEnabled(True)
-        self.favorites_LW.setDefaultDropAction(QtCore.Qt.MoveAction)
-        self.favorites_LW.setDragDropOverwriteMode(False)
-
-        # self.favorites_message_overlay = FavoritesTextOverlay(self.favorites_LW)
-        # self.favorites_LW.overlay_widget = self.favorites_message_overlay
+        self.command_palette_widget = command_palette.CommandPaletteWidget()
+        self.command_palette_widget.graphics_view.item_dropped.connect(self.palette_item_dropped)
 
         self.scripts_TV = ScriptTreeView()
         self.scripts_TV.setSelectionMode(QtWidgets.QListView.ExtendedSelection)
@@ -425,7 +412,7 @@ class ScriptPanelUI(QtWidgets.QWidget):
         self.scripts_TV.setDragEnabled(True)
         self.scripts_TV.setDefaultDropAction(QtCore.Qt.IgnoreAction)
         self.scripts_TV.setDragDropOverwriteMode(False)
-        self.scripts_TV.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
+        self.scripts_TV.setDragDropMode(QtWidgets.QAbstractItemView.DragOnly)
         self.scripts_TV.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.scripts_TV.doubleClicked.connect(self.action_script_double_clicked)
 
@@ -442,7 +429,7 @@ class ScriptPanelUI(QtWidgets.QWidget):
 
         main_splitter = QtWidgets.QSplitter()
         main_splitter.setOrientation(QtCore.Qt.Orientation.Vertical)
-        main_splitter.addWidget(self.favorites_LW)
+        main_splitter.addWidget(self.command_palette_widget)
         main_splitter.addWidget(scripts_and_search_widget)
 
         if sp_skyhook:
@@ -451,6 +438,13 @@ class ScriptPanelUI(QtWidgets.QWidget):
             self.skyhook_blender_CHK.setChecked(True)
             skyhook_dccs_layout.addWidget(self.skyhook_blender_CHK)
             main_layout.addLayout(skyhook_dccs_layout)
+
+        palette_buttons_layout = QtWidgets.QHBoxLayout()
+        self.save_palette_BTN = QtWidgets.QPushButton(text="Save Layout")
+        self.load_palette_BTN = QtWidgets.QPushButton(text="Load Layout")
+        palette_buttons_layout.addWidget(self.save_palette_BTN)
+        palette_buttons_layout.addWidget(self.load_palette_BTN)
+        main_layout.addLayout(palette_buttons_layout)
 
         main_layout.addWidget(main_splitter)
         self.setLayout(main_layout)
@@ -462,6 +456,15 @@ class ScriptPanelUI(QtWidgets.QWidget):
 
         if isinstance(script_item, ScriptModelItem):
             self.script_double_clicked.emit(script_item.script_path)
+
+    def palette_item_dropped(self, event):
+        """
+        :type event: QtGui.QDropEvent
+        """
+        if isinstance(event.source(), ScriptTreeView):
+            selected_scripts = self.scripts_TV.get_selected_script_paths()
+            if selected_scripts:
+                self.script_dropped_in_favorites.emit(selected_scripts[0])
 
 
 # class FavoritesTextOverlay(QtWidgets.QWidget):
@@ -485,16 +488,10 @@ class ScriptPanelUI(QtWidgets.QWidget):
 #         painter.drawText(event.rect(), QtCore.Qt.AlignCenter, self.empty_list_message)
 #         painter.setPen(QtGui.QPen(QtCore.Qt.NoPen))
 
+
 class ScriptTreeView(QtWidgets.QTreeView):
     def __init__(self, *args, **kwargs):
         super(ScriptTreeView, self).__init__(*args, **kwargs)
-
-    def dragEnterEvent(self, event):
-        if not event.mimeData().hasText():
-            selected_script_paths = self.get_selected_script_paths()
-            event.mimeData().setText(", ".join(selected_script_paths))
-
-        event.accept()
 
     def get_selected_script_paths(self, allow_folders=False):
         proxy = self.model()  # type: QtCore.QSortFilterProxyModel

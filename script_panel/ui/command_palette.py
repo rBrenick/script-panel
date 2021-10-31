@@ -46,9 +46,9 @@ class PaletteScene(QtWidgets.QGraphicsScene):
         self._background_color = QtGui.QColor(50, 50, 50)
         self._background_color_light = QtGui.QColor(100, 100, 100)
 
-        self.grid_size = 80
+        self.grid_size = 40
         self.grid_pen = QtGui.QPen(self._background_color_light)
-        self.grid_pen.setWidth(5)
+        self.grid_pen.setWidth(3)
 
         self.setBackgroundBrush(self._background_color)
 
@@ -71,6 +71,71 @@ class PaletteScene(QtWidgets.QGraphicsScene):
 
         painter.setPen(self.grid_pen)
         painter.drawLines(grid_lines)
+
+
+class PaletteGraphicsView(QtWidgets.QGraphicsView):
+    item_dropped = QtCore.Signal(object)
+
+    def __init__(self, scene, *args, **kwargs):
+        super(PaletteGraphicsView, self).__init__(*args, **kwargs)
+        self.setScene(scene)
+
+        self._is_dragging = False
+
+        self.zoom = 10
+        self.zoom_in_factor = 1.25
+        self.zoom_step = 1
+        self.zoom_range = [0, 10]
+
+        self.setAcceptDrops(True)
+        self.setAlignment(QtCore.Qt.AlignTop | QtCore.Qt.AlignLeft)
+        self.setTransformationAnchor(self.AnchorUnderMouse)
+        self.setRenderHints(
+            QtGui.QPainter.Antialiasing
+            | QtGui.QPainter.HighQualityAntialiasing
+            | QtGui.QPainter.SmoothPixmapTransform
+        )
+        self.setViewportUpdateMode(self.FullViewportUpdate)
+
+    def keyPressEvent(self, event):
+        if not event.isAutoRepeat() and event.key() == QtCore.Qt.Key_Space:
+            self.toggle_drag_mode(True)
+        super(PaletteGraphicsView, self).keyPressEvent(event)
+
+    def keyReleaseEvent(self, event):
+        if not event.isAutoRepeat() and event.key() == QtCore.Qt.Key_Space:
+            self.toggle_drag_mode(False)
+        super(PaletteGraphicsView, self).keyReleaseEvent(event)
+
+    def wheelEvent(self, event):
+        """
+        :type event: QtGui.QWheelEvent
+        """
+        if event.modifiers() != QtCore.Qt.ControlModifier:
+            return super(PaletteGraphicsView, self).wheelEvent(event)
+
+        zoom_out_factor = 1.0 / self.zoom_in_factor
+
+        if event.angleDelta().y() > 0:
+            zoom_factor = self.zoom_in_factor
+            self.zoom += self.zoom_step
+        else:
+            zoom_factor = zoom_out_factor
+            self.zoom -= self.zoom_step
+
+        self.scale(zoom_factor, zoom_factor)
+
+    def toggle_drag_mode(self, state=False):
+        if state:
+            self.setDragMode(self.ScrollHandDrag)
+        else:
+            self.setDragMode(self.DragMode.NoDrag)
+
+    def dragMoveEvent(self, event):
+        event.accept()
+
+    def dropEvent(self, event):
+        self.item_dropped.emit(event)
 
 
 class ResizeHandleRect(QtWidgets.QGraphicsRectItem):
@@ -116,6 +181,7 @@ class PaletteRectItem(QtWidgets.QGraphicsRectItem):
         self._wrapped_widget = None
 
         self.setFlag(QtWidgets.QGraphicsItem.ItemIsMovable, True)
+        self.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, True)
         self.setFlag(QtWidgets.QGraphicsItem.ItemSendsGeometryChanges, True)
         self.setBrush(QtCore.Qt.darkGray)
 
@@ -175,25 +241,26 @@ class CommandPaletteWidget(QtWidgets.QWidget):
         super(CommandPaletteWidget, self).__init__(*args, **kwargs)
 
         self._scene_items = []
+        self.scene_widgets = []
 
         self.main_layout = QtWidgets.QVBoxLayout()
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
 
         self.scene = PaletteScene()
-        self.graphics_view = QtWidgets.QGraphicsView(self)
-        self.graphics_view.setAlignment(QtCore.Qt.AlignTop | QtCore.Qt.AlignLeft)
-        self.graphics_view.setScene(self.scene)
+        self.graphics_view = PaletteGraphicsView(self.scene, self)
 
         # set ui
         self.main_layout.addWidget(self.graphics_view)
         self.setLayout(self.main_layout)
 
-    def add_widget(self, id, widget, pos):
+    def add_widget(self, id, widget, pos=None):
         rect_item = PaletteRectItem(id, 0, 0, self.scene.grid_size * 3, self.scene.grid_size * 3)
         rect_item.wrap_widget(widget)
         self.scene.addItem(rect_item)
         if pos:
             rect_item.setPos(rect_item.snap_pos_to_grid(QtCore.QPoint(*pos)))
         self._scene_items.append(rect_item)
+        self.scene_widgets.append(widget)
         return rect_item
 
     def get_scene_layout(self):
@@ -218,6 +285,16 @@ class CommandPaletteWidget(QtWidgets.QWidget):
             user_size = layout_info.get("size")
             if user_size:
                 scene_item.set_size(user_size)
+
+    def clear(self):
+        for item in self._scene_items:
+            self.scene.removeItem(item)
+        self._scene_items = []
+        self.scene_widgets = []
+
+    def get_mouse_pos(self):
+        scene_cursor_pos = self.graphics_view.mapFromGlobal(self.graphics_view.cursor().pos())
+        return scene_cursor_pos.toTuple()
 
 
 class CommandPanelSettings(BaseSettings):
