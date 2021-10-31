@@ -158,10 +158,15 @@ class PaletteGraphicsView(QtWidgets.QGraphicsView):
         self.item_dropped.emit(event)
 
 
-class ResizeHandleRect(QtWidgets.QGraphicsRectItem):
-    def __init__(self, *args, **kwargs):
-        super(ResizeHandleRect, self).__init__(*args, **kwargs)
+class ResizeHandle(QtWidgets.QGraphicsPolygonItem):
+    def __init__(self, handle_size, *args, **kwargs):
+        super(ResizeHandle, self).__init__(*args, **kwargs)
         self._being_resized = False
+
+        handle_points = [[handle_size, 0], [0, handle_size], [handle_size, handle_size]]
+        self.myPolygon = QtGui.QPolygonF([QtCore.QPointF(v1, v2) for v1, v2 in handle_points])
+        self.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0)))
+        self.setPolygon(self.myPolygon)
 
     def mousePressEvent(self, event):
         """
@@ -172,7 +177,7 @@ class ResizeHandleRect(QtWidgets.QGraphicsRectItem):
 
     def mouseReleaseEvent(self, event):
         self._being_resized = False
-        super(ResizeHandleRect, self).mouseReleaseEvent(event)
+        super(ResizeHandle, self).mouseReleaseEvent(event)
 
     def mouseMoveEvent(self, event):
         """
@@ -187,7 +192,7 @@ class ResizeHandleRect(QtWidgets.QGraphicsRectItem):
 
             parent_item.set_size([resized_x, resized_y], snap_to_grid=True)
 
-        return super(ResizeHandleRect, self).mouseMoveEvent(event)
+        return super(ResizeHandle, self).mouseMoveEvent(event)
 
 
 class PaletteRectItem(QtWidgets.QGraphicsRectItem):
@@ -207,7 +212,7 @@ class PaletteRectItem(QtWidgets.QGraphicsRectItem):
         self.setBrush(QtCore.Qt.darkGray)
 
         self.proxy_widget = QtWidgets.QGraphicsProxyWidget(self)
-        self.resize_button = ResizeHandleRect(0, 0, self.resize_handle_size, self.resize_handle_size)
+        self.resize_button = ResizeHandle(self.resize_handle_size)
         self.resize_button.setParentItem(self)
         self.resize_button.setBrush(QtCore.Qt.lightGray)
         self.text_item = QtWidgets.QGraphicsTextItem(self)
@@ -359,11 +364,11 @@ class ExampleWindow(QtWidgets.QMainWindow):
 
         self.settings = CommandPanelSettings()
 
-        # menu_bar = QtWidgets.QMenuBar()
-        # layout_menu = menu_bar.addMenu("Layout")
-        # layout_menu.addAction("Save Layout", self.save_layout)
-        # layout_menu.addAction("Load Layout", self.load_layout)
-        # self.setMenuBar(menu_bar)
+        menu_bar = QtWidgets.QMenuBar()
+        layout_menu = menu_bar.addMenu("Layout")
+        layout_menu.addAction("Save Layout", self.save_layout)
+        layout_menu.addAction("Load Layout", self.load_layout)
+        self.setMenuBar(menu_bar)
 
         self.command_palette_system = CommandPaletteSystem()
         self.command_palette_widget = CommandPaletteWidget()

@@ -20,6 +20,8 @@ ICON_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), "icons")
 active_dcc_is_maya = "maya" in os.path.basename(sys.executable).lower()
 active_dcc_is_houdini = "houdini" in os.path.basename(sys.executable).lower()
 
+standalone_app_window = None
+
 """
 QT UTILS BEGIN
 """
@@ -54,7 +56,7 @@ class BaseSettings(QtCore.QSettings):
 
 
 def get_app_window():
-    top_window = None
+    top_window = standalone_app_window
 
     if active_dcc_is_maya:
         from maya import OpenMayaUI as omui

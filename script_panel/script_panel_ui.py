@@ -277,7 +277,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
     def add_favorite_widget(self, script_path):
         all_display_info = self.settings.get_value(ScriptPanelSettings.k_favorites_display, default=dict())
-        display_info = script_display_info = all_display_info.get(script_path)
+        display_info = all_display_info.get(script_path)
 
         script_widget = ScriptWidget(script_path)
         script_widget.script_clicked.connect(self.activate_script)
@@ -407,7 +407,7 @@ class ScriptWidget(QtWidgets.QWidget):
     def open_label_editor(self):
         current_text = self.trigger_btn.text()
         new_text, ok = QtWidgets.QInputDialog.getText(
-            self,
+            ui_utils.get_app_window(),
             "New Display Label",
             "Enter new display label for: {}".format(self.script_name),
             text=current_text,
@@ -443,7 +443,7 @@ class ScriptWidget(QtWidgets.QWidget):
         self.trigger_btn.setStyleSheet(BACKGROUND_COLOR_FORM.format(*color))
 
     def open_icon_browser(self):
-        selected_file, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Select icon")
+        selected_file, _ = QtWidgets.QFileDialog.getOpenFileName(ui_utils.get_app_window(), "Select icon")
         if selected_file:
             self.set_icon_from_path(selected_file)
 
@@ -473,18 +473,10 @@ class ScriptModelItem(QtGui.QStandardItem):
 ###################################
 # General UI
 
-class ScriptPanelWindow(ui_utils.ToolWindow):
-    def __init__(self, *args, **kwargs):
-        super(ScriptPanelWindow, self).__init__(*args, **kwargs)
-
-        self.main_widget = ScriptPanelWidget()
-        self.setCentralWidget(self.main_widget)
-        self.setWindowTitle("Script Panel")
-        self.resize(1000, 1000)
-
-
 class Icons(object):
     def __init__(self):
+        self.script_panel_icon = ui_utils.create_qicon("script_panel_icon")
+
         self.python_icon = ui_utils.create_qicon("python_icon")
         self.mel_icon = ui_utils.create_qicon("mel_icon")
         self.unknown_type_icon = ui_utils.create_qicon("unknown_icon")
@@ -530,6 +522,17 @@ class Icons(object):
 
 
 icons = Icons()
+
+
+class ScriptPanelWindow(ui_utils.ToolWindow):
+    def __init__(self, *args, **kwargs):
+        super(ScriptPanelWindow, self).__init__(*args, **kwargs)
+
+        self.main_widget = ScriptPanelWidget()
+        self.setCentralWidget(self.main_widget)
+        self.setWindowTitle("Script Panel")
+        self.setWindowIcon(icons.script_panel_icon)
+        self.resize(1000, 1000)
 
 
 class ScriptPanelUI(QtWidgets.QWidget):
@@ -745,6 +748,7 @@ def main(reload=False):
     win.main(reload=reload)
 
     if standalone_app:
+        ui_utils.standalone_app_window = win
         sys.exit(standalone_app.exec_())
 
     return win
