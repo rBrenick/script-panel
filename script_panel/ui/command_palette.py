@@ -167,11 +167,13 @@ class ResizeHandle(QtWidgets.QGraphicsPolygonItem):
     def __init__(self, handle_size, *args, **kwargs):
         super(ResizeHandle, self).__init__(*args, **kwargs)
         self._being_resized = False
+        self._being_moved = False
 
         handle_points = [[handle_size, 0], [0, handle_size], [handle_size, handle_size]]
         self.myPolygon = QtGui.QPolygonF([QtCore.QPointF(v1, v2) for v1, v2 in handle_points])
         self.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0)))
         self.setPolygon(self.myPolygon)
+        self.setAcceptHoverEvents(True)
 
         self.setCursor(QtGui.Qt.SizeFDiagCursor)
 
@@ -180,9 +182,14 @@ class ResizeHandle(QtWidgets.QGraphicsPolygonItem):
         :type event: QtWidgets.QGraphicsSceneMouseEvent
         """
         if event.type() == QtCore.QEvent.Type.GraphicsSceneMousePress:
-            self._being_resized = True
+            if event.modifiers() == QtCore.Qt.ControlModifier:
+                self._being_moved = True
+                self.setCursor(QtGui.Qt.DragMoveCursor)
+            else:
+                self._being_resized = True
 
     def mouseReleaseEvent(self, event):
+        self._being_moved = False
         self._being_resized = False
         super(ResizeHandle, self).mouseReleaseEvent(event)
 
@@ -199,7 +206,32 @@ class ResizeHandle(QtWidgets.QGraphicsPolygonItem):
 
             parent_item.set_size([resized_x, resized_y], snap_to_grid=True)
 
+        if self._being_moved:
+            parent_item = self.parentItem()  # type: PaletteRectItem
+            handle_pos = event.scenePos()
+            relative_x = handle_pos.x() - parent_item.rect().width()
+            relative_y = handle_pos.y() - parent_item.rect().height()
+            parent_item.set_pos([relative_x, relative_y])
+
         return super(ResizeHandle, self).mouseMoveEvent(event)
+
+    def hoverEnterEvent(self, event):
+        self.update_cursor_shape(event)
+        super(ResizeHandle, self).hoverEnterEvent(event)
+
+    def hoverLeaveEvent(self, event):
+        self.update_cursor_shape(event)
+        super(ResizeHandle, self).hoverLeaveEvent(event)
+
+    def hoverMoveEvent(self, event):
+        self.update_cursor_shape(event)
+        super(ResizeHandle, self).hoverMoveEvent(event)
+
+    def update_cursor_shape(self, event):
+        if event.modifiers() == QtCore.Qt.ControlModifier:
+            self.setCursor(QtCore.Qt.SizeAllCursor)
+        else:
+            self.setCursor(QtCore.Qt.SizeFDiagCursor)
 
 
 class PaletteRectItem(QtWidgets.QGraphicsRectItem):
@@ -209,7 +241,7 @@ class PaletteRectItem(QtWidgets.QGraphicsRectItem):
         self.id = id
         self.header_height = 40
         self.show_header = True
-        self.resize_handle_size = 30
+        self.resize_handle_size = 40
         self._being_resized = False
         self.wrapped_widget = None
         self.is_selected = False
