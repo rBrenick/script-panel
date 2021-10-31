@@ -152,7 +152,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
             selected_script_widget = None
 
         action_list = [
-            {"Edit": self.open_script_in_editor},
+            {"Edit": self.open_favorites_script_in_editor},
             {"Remove from favorites": self.remove_scripts_from_favorites}
         ]
 
@@ -269,6 +269,11 @@ class ScriptPanelWidget(QtWidgets.QWidget):
             script_widget = item.wrapped_widget  # type: ScriptWidget
             self.settings.remove_from_favorites(script_widget.script_path)
         self.ui.command_palette_widget.remove_selected_items()
+
+    def open_favorites_script_in_editor(self):
+        for item in self.ui.command_palette_widget.get_selected_items():  # type: command_palette.PaletteRectItem
+            script_widget = item.wrapped_widget  # type: ScriptWidget
+            self.open_script_in_editor(script_widget.script_path)
 
     def add_favorite_widget(self, script_path):
         all_display_info = self.settings.get_value(ScriptPanelSettings.k_favorites_display, default=dict())
