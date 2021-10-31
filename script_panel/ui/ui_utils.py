@@ -32,6 +32,8 @@ class BaseSettings(QtCore.QSettings):
             data_type = type(default)
 
         settings_val = self.value(key, defaultValue=default)
+        if settings_val is None:
+            return default
 
         if data_type == list and not isinstance(settings_val, list):
             settings_val = [settings_val] if settings_val else list()

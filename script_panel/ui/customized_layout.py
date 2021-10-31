@@ -40,9 +40,9 @@ from script_panel.ui.ui_utils import QtCore, QtGui, QtWidgets, BaseSettings
 #         pos = event.pos()
 #         event.acceptProposedAction()
 
-class CustomScene(QtWidgets.QGraphicsScene):
+class PaletteScene(QtWidgets.QGraphicsScene):
     def __init__(self, *args, **kwargs):
-        super(CustomScene, self).__init__(*args, **kwargs)
+        super(PaletteScene, self).__init__(*args, **kwargs)
         self._background_color = QtGui.QColor(50, 50, 50)
         self._background_color_light = QtGui.QColor(100, 100, 100)
 
@@ -53,7 +53,7 @@ class CustomScene(QtWidgets.QGraphicsScene):
         self.setBackgroundBrush(self._background_color)
 
     def drawBackground(self, painter, rect):
-        super(CustomScene, self).drawBackground(painter, rect)
+        super(PaletteScene, self).drawBackground(painter, rect)
         left = int(math.floor(rect.left()))
         right = int(math.ceil(rect.right()))
         top = int(math.floor(rect.top()))
@@ -73,88 +73,151 @@ class CustomScene(QtWidgets.QGraphicsScene):
         painter.drawLines(grid_lines)
 
 
-class GraphicsProxyWidget(QtWidgets.QGraphicsProxyWidget):
+class ResizeHandleRect(QtWidgets.QGraphicsRectItem):
     def __init__(self, *args, **kwargs):
-        super(GraphicsProxyWidget, self).__init__(*args, **kwargs)
-
-
-class GraphicsRectItem(QtWidgets.QGraphicsRectItem):
-    def __init__(self, id, *args, **kwargs):
-        super(GraphicsRectItem, self).__init__(*args, **kwargs)
-
-        self.id = id
-        self.header_height = 40
+        super(ResizeHandleRect, self).__init__(*args, **kwargs)
         self._being_resized = False
-        self.widget = None
-
-        self.setFlag(QtWidgets.QGraphicsItem.ItemIsMovable, True)
-        self.setFlag(QtWidgets.QGraphicsItem.ItemSendsGeometryChanges, True)
-        self.setBrush(QtCore.Qt.darkGray)
-
-        self.proxy_widget = GraphicsProxyWidget(self)
-        self.text_item = QtWidgets.QGraphicsTextItem(self)
-        self.text_item.setPlainText(id)
-
-    def set_widget_geometry(self):
-        self.widget.setGeometry(0, 0, self.rect().width(), self.rect().height() - self.header_height - 20)
-        self.proxy_widget.setPos(0, self.header_height)
-
-    def wrap_widget(self, widget):
-        self.widget = widget
-        self.proxy_widget.setWidget(widget)
-        self.set_widget_geometry()
-
-    def pos_within_resize_handle(self, pos):
-        if pos.x() > self.rect().width() - 30:
-            if pos.y() > self.rect().height() - 30:
-                return True
-        return False
 
     def mousePressEvent(self, event):
         """
         :type event: QtWidgets.QGraphicsSceneMouseEvent
         """
         if event.type() == QtCore.QEvent.Type.GraphicsSceneMousePress:
-            if self.pos_within_resize_handle(event.pos()):
-                self._being_resized = True
-        return super(GraphicsRectItem, self).mousePressEvent(event)
+            self._being_resized = True
 
     def mouseReleaseEvent(self, event):
         self._being_resized = False
-        super(GraphicsRectItem, self).mouseReleaseEvent(event)
+        super(ResizeHandleRect, self).mouseReleaseEvent(event)
 
     def mouseMoveEvent(self, event):
         """
         :type event: QtWidgets.QGraphicsSceneMouseEvent
         """
         if self._being_resized:
-            snapped_pos = self.snap_pos_to_grid(event.pos())
-            self.set_size([snapped_pos.x(), snapped_pos.y()])
-            return
+            parent_item = self.parentItem()  # type: PaletteRectItem
+            handle_pos = event.scenePos()
+            parent_pos = parent_item.scenePos()
+            resized_x = handle_pos.x() - parent_pos.x()
+            resized_y = handle_pos.y() - parent_pos.y()
 
-        return super(GraphicsRectItem, self).mouseMoveEvent(event)
+            parent_item.set_size([resized_x, resized_y], snap_to_grid=True)
 
-    def set_size(self, size):
+        return super(ResizeHandleRect, self).mouseMoveEvent(event)
+
+
+class PaletteRectItem(QtWidgets.QGraphicsRectItem):
+    def __init__(self, id, *args, **kwargs):
+        super(PaletteRectItem, self).__init__(*args, **kwargs)
+
+        self.id = id
+        self.header_height = 40
+        self.resize_handle_size = 30
+        self._being_resized = False
+        self._wrapped_widget = None
+
+        self.setFlag(QtWidgets.QGraphicsItem.ItemIsMovable, True)
+        self.setFlag(QtWidgets.QGraphicsItem.ItemSendsGeometryChanges, True)
+        self.setBrush(QtCore.Qt.darkGray)
+
+        self.proxy_widget = QtWidgets.QGraphicsProxyWidget(self)
+        self.resize_button = ResizeHandleRect(0, 0, self.resize_handle_size, self.resize_handle_size)
+        self.resize_button.setParentItem(self)
+        self.resize_button.setBrush(QtCore.Qt.lightGray)
+        self.text_item = QtWidgets.QGraphicsTextItem(self)
+        self.text_item.setPlainText(id)
+
+    def set_widget_geometry(self):
+        box_width, box_height = self.rect().width(), self.rect().height()
+        self._wrapped_widget.setGeometry(0, 0, box_width, box_height - self.header_height)
+        self.proxy_widget.setPos(0, self.header_height)
+        self.resize_button.setPos(box_width - self.resize_handle_size, box_height - self.resize_handle_size)
+
+    def wrap_widget(self, widget):
+        self._wrapped_widget = widget
+        self.proxy_widget.setWidget(widget)
+        self.set_widget_geometry()
+
+    def set_size(self, size, snap_to_grid=False):
+        if snap_to_grid:
+            resized_pos = QtCore.QPoint(*size)
+            self.snap_pos_to_grid(resized_pos)
+            size = resized_pos.toTuple()
+
         rect = self.rect()
         rect.setWidth(size[0])
         rect.setHeight(size[1])
         self.setRect(rect)
         self.set_widget_geometry()
 
+    def set_pos(self, pos):
+        self.setPos(*pos)  # will automatically trigger itemChange
+
     def snap_pos_to_grid(self, pos):
         """
         :type pos:  QtCore.QPointF
         """
         grid_size = self.scene().grid_size
-        pos.setX(round(pos.x() / grid_size) * grid_size)
-        pos.setY(round(pos.y() / grid_size) * grid_size)
+        snapped_x = max(round(pos.x() / grid_size) * grid_size, 0)
+        snapped_y = max(round(pos.y() / grid_size) * grid_size, 0)
+        pos.setX(snapped_x)
+        pos.setY(snapped_y)
         return pos
 
     def itemChange(self, change, value):
         if change == self.ItemPositionChange and self.scene():
             value = self.snap_pos_to_grid(value)
 
-        return super(GraphicsRectItem, self).itemChange(change, value)
+        return super(PaletteRectItem, self).itemChange(change, value)
+
+
+class CommandPaletteWidget(QtWidgets.QWidget):
+    def __init__(self, *args, **kwargs):
+        super(CommandPaletteWidget, self).__init__(*args, **kwargs)
+
+        self._scene_items = []
+
+        self.main_layout = QtWidgets.QVBoxLayout()
+
+        self.scene = PaletteScene()
+        self.graphics_view = QtWidgets.QGraphicsView(self)
+        self.graphics_view.setAlignment(QtCore.Qt.AlignTop | QtCore.Qt.AlignLeft)
+        self.graphics_view.setScene(self.scene)
+
+        # set ui
+        self.main_layout.addWidget(self.graphics_view)
+        self.setLayout(self.main_layout)
+
+    def add_widget(self, id, widget, pos):
+        rect_item = PaletteRectItem(id, 0, 0, self.scene.grid_size * 3, self.scene.grid_size * 3)
+        rect_item.wrap_widget(widget)
+        self.scene.addItem(rect_item)
+        if pos:
+            rect_item.setPos(rect_item.snap_pos_to_grid(QtCore.QPoint(*pos)))
+        self._scene_items.append(rect_item)
+        return rect_item
+
+    def get_scene_layout(self):
+        user_layout = {}
+        for scene_item in self._scene_items:  # type: PaletteRectItem
+            user_layout[scene_item.id] = {
+                "pos": scene_item.pos().toTuple(),
+                "size": [scene_item.rect().width(), scene_item.rect().height()],
+            }
+        return user_layout
+
+    def set_scene_layout(self, user_layout):
+        for scene_item in self._scene_items:  # type: PaletteRectItem
+            layout_info = user_layout.get(scene_item.id)  # type: dict
+            if not layout_info:
+                continue
+
+            user_pos = layout_info.get("pos")
+            if user_pos:
+                scene_item.set_pos(user_pos)
+
+            user_size = layout_info.get("size")
+            if user_size:
+                scene_item.set_size(user_size)
 
 
 class CommandPanelSettings(BaseSettings):
@@ -166,77 +229,64 @@ class CommandPanelSettings(BaseSettings):
             *args, **kwargs)
 
 
+class CommandPaletteSystem(object):
+    def __init__(self):
+        pass
+
+    def get_palettes(self):
+        return ["Test"]
+
+
 class ExampleWindow(QtWidgets.QMainWindow):
     def __init__(self, *args, **kwargs):
         super(ExampleWindow, self).__init__(*args, **kwargs)
 
         self.settings = CommandPanelSettings()
 
-        menu_bar = QtWidgets.QMenuBar()
-        layout_menu = menu_bar.addMenu("Layout")
-        layout_menu.addAction("Save Layout", self.save_layout)
-        layout_menu.addAction("Load Layout", self.load_layout)
-        self.setMenuBar(menu_bar)
+        # menu_bar = QtWidgets.QMenuBar()
+        # layout_menu = menu_bar.addMenu("Layout")
+        # layout_menu.addAction("Save Layout", self.save_layout)
+        # layout_menu.addAction("Load Layout", self.load_layout)
+        # self.setMenuBar(menu_bar)
 
-        self.scene = CustomScene()
-        self.scene_items = []
+        self.command_palette_system = CommandPaletteSystem()
+        self.command_palette_widget = CommandPaletteWidget()
 
-        # set main widget to scene
-        main_widget = QtWidgets.QGraphicsView(self)
-        main_widget.setScene(self.scene)
-        self.setCentralWidget(main_widget)
+        self.scene_chooser = QtWidgets.QComboBox()
+        self.scene_chooser.addItems(self.command_palette_system.get_palettes())
+        self.command_palette_widget.main_layout.insertWidget(0, self.scene_chooser)
+
+        self.setCentralWidget(self.command_palette_widget)
 
         self.create_test_items()
         self.load_layout()
 
     def save_layout(self):
-        user_layout = {}
-        for scene_item in self.scene_items:  # type: GraphicsRectItem
-            user_layout[scene_item.id] = {
-                "pos": scene_item.pos(),
-                "size": [scene_item.rect().width(), scene_item.rect().height()],
-            }
-
-        self.settings.setValue("user_layout", user_layout)
+        self.settings.setValue("user_layout", self.command_palette_widget.get_scene_layout())
 
     def load_layout(self):
         user_layout = self.settings.get_value("user_layout", default={})  # type: dict
-        for scene_item in self.scene_items:  # type: GraphicsRectItem
-            layout_info = user_layout.get(scene_item.id)  # type: dict
-            user_pos = layout_info.get("pos")
-            if user_pos:
-                scene_item.setPos(user_pos)
-            user_size = layout_info.get("size")
-            if user_size:
-                scene_item.set_size(user_size)
-
-    def add_widget(self, id, widget, pos):
-        rect_item = GraphicsRectItem(id, 0, 0, self.scene.grid_size * 3, self.scene.grid_size * 3)
-        rect_item.id = id
-        rect_item.wrap_widget(widget)
-        self.scene.addItem(rect_item)
-        if pos:
-            rect_item.setPos(rect_item.snap_pos_to_grid(QtCore.QPoint(*pos)))
-        self.scene_items.append(rect_item)
-        return rect_item
+        self.command_palette_widget.set_scene_layout(user_layout)
 
     def create_test_items(self):
         for i in range(4):
             btn_text = "Hello_{}".format(i)
             btn = QtWidgets.QPushButton(btn_text)
+            btn.clicked.connect(test_func)
 
-            self.add_widget(
+            self.command_palette_widget.add_widget(
                 id="COMMAND_{:03d}".format(i),
                 widget=btn,
                 pos=[i * 200, i * 200],
             )
 
-        # rect = self.scene.addRect(20, 20, 60, 60, QtGui.QPen(), QtGui.QBrush(QtCore.Qt.green))
-        # rect.setFlag(QtWidgets.QGraphicsItem.ItemIsMovable)
-
     def closeEvent(self, event):
         self.save_layout()
         super(ExampleWindow, self).closeEvent(event)
+
+
+def test_func():
+    print("a_random_string")
 
 
 if __name__ == '__main__':
