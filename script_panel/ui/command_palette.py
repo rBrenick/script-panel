@@ -46,7 +46,7 @@ class PaletteScene(QtWidgets.QGraphicsScene):
         self._background_color = QtGui.QColor(50, 50, 50)
         self._background_color_light = QtGui.QColor(100, 100, 100)
 
-        self.grid_size = 40
+        self.grid_size = 20
         self.grid_pen = QtGui.QPen(self._background_color_light)
         self.grid_pen.setWidth(3)
 
@@ -119,7 +119,7 @@ class PaletteGraphicsView(QtWidgets.QGraphicsView):
         scene_pos = self.mapFromGlobal(self.cursor().pos())
         item_under_cursor = self.scene().itemAt(scene_pos, QtGui.QTransform())
         if not item_under_cursor:
-            return 
+            return
 
         # if child item_selected, go up to parent rect item
         if item_under_cursor.parentItem():
@@ -328,7 +328,8 @@ class CommandPaletteWidget(QtWidgets.QWidget):
             self._scene_items.remove(scene_item)
 
     def get_mouse_pos(self):
-        scene_cursor_pos = self.graphics_view.mapFromGlobal(self.graphics_view.cursor().pos())
+        cursor = QtGui.QCursor()
+        scene_cursor_pos = self.graphics_view.mapFromGlobal(cursor.pos())
         return scene_cursor_pos.toTuple()
 
     def get_selected_items(self):
