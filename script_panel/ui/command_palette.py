@@ -173,9 +173,10 @@ class ResizeHandle(QtWidgets.QGraphicsPolygonItem):
         self.myPolygon = QtGui.QPolygonF([QtCore.QPointF(v1, v2) for v1, v2 in handle_points])
         self.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0)))
         self.setPolygon(self.myPolygon)
-        self.setAcceptHoverEvents(True)
 
-        self.setCursor(QtGui.Qt.SizeFDiagCursor)
+        self.setAcceptHoverEvents(True)
+        self.default_cursor = QtGui.Qt.SizeFDiagCursor
+        self.setCursor(self.default_cursor)
 
     def mousePressEvent(self, event):
         """
@@ -184,7 +185,6 @@ class ResizeHandle(QtWidgets.QGraphicsPolygonItem):
         if event.type() == QtCore.QEvent.Type.GraphicsSceneMousePress:
             if event.modifiers() == QtCore.Qt.ControlModifier:
                 self._being_moved = True
-                self.setCursor(QtGui.Qt.DragMoveCursor)
             else:
                 self._being_resized = True
 
@@ -231,7 +231,7 @@ class ResizeHandle(QtWidgets.QGraphicsPolygonItem):
         if event.modifiers() == QtCore.Qt.ControlModifier:
             self.setCursor(QtCore.Qt.SizeAllCursor)
         else:
-            self.setCursor(QtCore.Qt.SizeFDiagCursor)
+            self.setCursor(self.default_cursor)
 
 
 class PaletteRectItem(QtWidgets.QGraphicsRectItem):
