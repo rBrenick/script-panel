@@ -108,6 +108,25 @@ class PaletteGraphicsView(QtWidgets.QGraphicsView):
             self.toggle_drag_mode(False)
         super(PaletteGraphicsView, self).keyReleaseEvent(event)
 
+    def mousePressEvent(self, event):
+        if event.button() == QtCore.Qt.RightButton:
+            self.select_item_under_cursor()
+
+        super(PaletteGraphicsView, self).mousePressEvent(event)
+
+    def select_item_under_cursor(self):
+        self.scene().clearSelection()
+        scene_pos = self.mapFromGlobal(self.cursor().pos())
+        item_under_cursor = self.scene().itemAt(scene_pos, QtGui.QTransform())
+        if not item_under_cursor:
+            return 
+
+        # if child item_selected, go up to parent rect item
+        if item_under_cursor.parentItem():
+            item_under_cursor = item_under_cursor.parentItem()  # type: PaletteRectItem
+
+        item_under_cursor.setSelected(True)
+
     def wheelEvent(self, event):
         """
         :type event: QtGui.QWheelEvent
@@ -130,7 +149,7 @@ class PaletteGraphicsView(QtWidgets.QGraphicsView):
         if state:
             self.setDragMode(self.ScrollHandDrag)
         else:
-            self.setDragMode(self.DragMode.NoDrag)
+            self.setDragMode(self.RubberBandDrag)
 
     def dragMoveEvent(self, event):
         event.accept()

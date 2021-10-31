@@ -23,11 +23,13 @@ if not QtWidgets.QApplication.instance():
     standalone_app = QtWidgets.QApplication(sys.argv)
 
 dcc_interface = dcc.DCCInterface()
+BACKGROUND_COLOR_FORM = "background-color:rgb({0}, {1}, {2})"
 
 
 class ScriptPanelSettings(ui_utils.BaseSettings):
     k_favorites = "favorites"
     k_favorites_layout = "favorites_layout"
+    k_favorites_display = "favorites_display"
     k_double_click_action = "double_click_action"
     k_skyhook_enabled = "skyhook_enabled"
 
@@ -125,10 +127,30 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         ui_utils.build_menu_from_action_list(script_panel_context_actions)
 
     def build_palette_context_menu(self):
+
+        selected_items = self.ui.command_palette_widget.get_selected_items()
+        if len(selected_items) == 1:
+            selected_script_widget = selected_items[-1].wrapped_widget  # type: ScriptWidget
+        else:
+            selected_script_widget = None
+
         action_list = [
             {"Edit": self.open_script_in_editor},
             {"Remove from favorites": self.remove_scripts_from_favorites}
         ]
+
+        if selected_script_widget:
+            action_list.extend([
+                "-",
+                {"Set Label": selected_script_widget.open_label_editor},
+                {"Set Color": selected_script_widget.open_display_color_picker},
+                {"Set Icon": selected_script_widget.open_icon_browser},
+                "-",
+                {"Reset Display": selected_script_widget.reset_display},
+                {"Reset Display - Label": selected_script_widget.reset_display_label},
+                {"Reset Display - Color": selected_script_widget.reset_display_color},
+                {"Reset Display - Icon": selected_script_widget.reset_display_icon},
+            ])
 
         ui_utils.build_menu_from_action_list(action_list)
 
@@ -213,7 +235,6 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
     def refresh_favorites(self):
         favorite_scripts = self.settings.get_value(ScriptPanelSettings.k_favorites, default=list())
-
         self.ui.command_palette_widget.clear()
 
         for script_path in favorite_scripts:
@@ -233,8 +254,13 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.ui.command_palette_widget.remove_selected_items()
 
     def add_favorite_widget(self, script_path):
+        all_display_info = self.settings.get_value(ScriptPanelSettings.k_favorites_display, default=dict())
+        display_info = script_display_info = all_display_info.get(script_path)
+
         script_widget = ScriptWidget(script_path)
         script_widget.script_clicked.connect(self.activate_script)
+        if display_info:
+            script_widget.set_display_from_info(display_info)
 
         script_id = os.path.basename(script_path)
         self.ui.command_palette_widget.add_widget(
@@ -245,13 +271,16 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
     def save_favorites_layout(self):
         favorite_scripts = []
+        scripts_display_info = {}
         for script_widget in self.ui.command_palette_widget.scene_widgets:  # type: ScriptWidget
             favorite_scripts.append(script_widget.script_path)
+            scripts_display_info[script_widget.script_path] = script_widget.get_display_info()
 
         user_layout = self.ui.command_palette_widget.get_scene_layout()
 
         self.settings.setValue(self.settings.k_favorites, favorite_scripts)
         self.settings.setValue(self.settings.k_favorites_layout, user_layout)
+        self.settings.setValue(self.settings.k_favorites_display, scripts_display_info)
 
     def filter_scripts(self, text):
         search = QtCore.QRegExp(text, QtCore.Qt.CaseInsensitive, QtCore.QRegExp.RegExp)
@@ -305,23 +334,108 @@ class ScriptWidget(QtWidgets.QWidget):
         super(ScriptWidget, self).__init__(*args, **kwargs)
 
         self.script_path = script_path
+        self.script_name = os.path.basename(script_path)
+        self.display_color = None
+        self.icon_path = None
 
-        btn = QtWidgets.QToolButton(parent=self)
-        btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
-        btn.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
-        btn.setText(os.path.basename(script_path))
-        btn.clicked.connect(self.activate_script)
+        self.trigger_btn = QtWidgets.QToolButton(parent=self)
+        self.trigger_btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
+        self.trigger_btn.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
+        self.trigger_btn.setText(self.script_name)
+        self.trigger_btn.clicked.connect(self.activate_script)
 
-        script_icon = icons.get_script_icon_for_type(script_path)
-        btn.setIcon(script_icon)
+        self.default_icon = icons.get_script_icon_for_type(script_path)
+        self.trigger_btn.setIcon(self.default_icon)
 
         main_layout = QtWidgets.QHBoxLayout()
-        main_layout.addWidget(btn)
+        main_layout.addWidget(self.trigger_btn)
         main_layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(main_layout)
 
     def activate_script(self):
         self.script_clicked.emit(self.script_path)
+
+    def get_display_info(self):
+        return {
+            "label": self.trigger_btn.text(),
+            "color": self.display_color,
+            "icon_path": self.icon_path,
+        }
+
+    def set_display_from_info(self, display_info):
+        self.set_display_label(display_info.get("label", self.script_name))
+        self.set_display_color(display_info.get("color"))
+        self.set_icon_from_path(display_info.get("icon_path"))
+
+    def reset_display(self):
+        self.set_display_from_info(dict())
+
+    def reset_display_label(self):
+        self.set_display_label(self.script_name)
+
+    def reset_display_color(self):
+        self.set_display_color(None)
+
+    def reset_display_icon(self):
+        self.set_icon_from_path(None)
+
+    #########################################
+    # Display utility functions
+    def open_label_editor(self):
+        current_text = self.trigger_btn.text()
+        new_text, ok = QtWidgets.QInputDialog.getText(
+            self,
+            "New Display Label",
+            "Enter new display label for: {}".format(self.script_name),
+            text=current_text,
+        )
+        if ok:
+            self.set_display_label(new_text)
+
+    def set_display_label(self, text):
+        self.trigger_btn.setText(text)
+
+    def open_display_color_picker(self):
+        new_color = ui_utils.open_color_picker(current_color=self.display_color,
+                                               color_signal=self.update_display_color)
+        if new_color:
+            self.set_display_color(new_color.getRgb()[:3])
+        else:
+            self.update_display_color(self.display_color)
+
+    def set_display_color(self, color):
+        """Set the internal variable and apply the color on the widget"""
+        self.display_color = color
+        self.update_display_color(color)
+
+    def update_display_color(self, color):
+        """Change the display of the background color"""
+        if not color:
+            self.trigger_btn.setStyleSheet("")
+            return
+
+        if isinstance(color, QtGui.QColor):
+            color = color.getRgb()[:3]
+
+        self.trigger_btn.setStyleSheet(BACKGROUND_COLOR_FORM.format(*color))
+
+    def open_icon_browser(self):
+        selected_file, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Select icon")
+        if selected_file:
+            self.set_icon_from_path(selected_file)
+
+    def set_icon_from_path(self, icon_path):
+        if not icon_path:
+            self.icon_path = icon_path
+            self.trigger_btn.setIcon(self.default_icon)
+            return
+
+        try:
+            q_icon = ui_utils.create_qicon(icon_path)
+            self.trigger_btn.setIcon(q_icon)
+            self.icon_path = icon_path
+        except Exception as e:
+            print("Unable to set icon: ", e)
 
 
 class ScriptModelItem(QtGui.QStandardItem):

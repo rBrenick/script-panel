@@ -262,6 +262,23 @@ def set_settings_value(settings_obj, key, value, post_set_command=None):
         post_set_command()
 
 
+def open_color_picker(current_color=None, color_signal=None):
+    picker = QtWidgets.QColorDialog(parent=get_app_window())
+
+    if current_color:
+        if isinstance(current_color, (list, tuple)):
+            color = QtGui.QColor()
+            color.setRgb(*current_color)
+        else:
+            color = current_color
+        picker.setCurrentColor(color)
+
+    if color_signal:
+        picker.currentColorChanged.connect(color_signal)
+
+    if picker.exec_():
+        return picker.currentColor()
+
 """
 QT UTILS END
 """
