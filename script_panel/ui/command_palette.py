@@ -173,6 +173,8 @@ class ResizeHandle(QtWidgets.QGraphicsPolygonItem):
         self.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0)))
         self.setPolygon(self.myPolygon)
 
+        self.setCursor(QtGui.Qt.SizeFDiagCursor)
+
     def mousePressEvent(self, event):
         """
         :type event: QtWidgets.QGraphicsSceneMouseEvent
