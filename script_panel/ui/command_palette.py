@@ -48,7 +48,7 @@ class PaletteScene(QtWidgets.QGraphicsScene):
 
         self.grid_size = 20
         self.grid_pen = QtGui.QPen(self._background_color_light)
-        self.grid_pen.setWidth(3)
+        self.grid_pen.setWidth(1)
 
         self.setBackgroundBrush(self._background_color)
 
@@ -115,7 +115,12 @@ class PaletteGraphicsView(QtWidgets.QGraphicsView):
         super(PaletteGraphicsView, self).mousePressEvent(event)
 
     def select_item_under_cursor(self):
-        self.scene().clearSelection()
+        item_under_cursor = self.get_item_under_cursor()
+        if item_under_cursor:
+            self.scene().clearSelection()
+            item_under_cursor.setSelected(True)
+
+    def get_item_under_cursor(self):
         scene_pos = self.mapFromGlobal(self.cursor().pos())
         item_under_cursor = self.scene().itemAt(scene_pos, QtGui.QTransform())
         if not item_under_cursor:
@@ -125,7 +130,7 @@ class PaletteGraphicsView(QtWidgets.QGraphicsView):
         if item_under_cursor.parentItem():
             item_under_cursor = item_under_cursor.parentItem()  # type: PaletteRectItem
 
-        item_under_cursor.setSelected(True)
+        return item_under_cursor
 
     def wheelEvent(self, event):
         """
@@ -303,7 +308,7 @@ class CommandPaletteWidget(QtWidgets.QWidget):
         self.display_headers(ui_data.get("show_headers", True))
 
     def add_widget(self, id, widget, pos=None):
-        rect_item = PaletteRectItem(id, 0, 0, self.scene.grid_size * 3, self.scene.grid_size * 3)
+        rect_item = PaletteRectItem(id, 0, 0, self.scene.grid_size * 16, self.scene.grid_size * 8)
         rect_item.wrap_widget(widget)
         self.scene.addItem(rect_item)
         if pos:
