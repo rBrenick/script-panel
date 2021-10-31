@@ -76,7 +76,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.ui.script_double_clicked.connect(self.script_double_clicked)
         self.ui.script_dropped_in_favorites.connect(self.add_script_to_favorites)
         self.ui.save_palette_BTN.clicked.connect(self.save_favorites_layout)
-        self.ui.load_palette_BTN.clicked.connect(self.refresh_favorites)
+        self.ui.load_palette_BTN.clicked.connect(self.load_favorites_layout)
 
         # right click menus
         self.ui.scripts_TV.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
@@ -86,6 +86,18 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.ui.command_palette_widget.customContextMenuRequested.connect(self.build_palette_context_menu)
 
         # shortcuts
+        self.setup_palette_shortcuts()
+
+        # build ui
+        self.load_favorites_layout()
+        self.refresh_scripts()
+        self.load_settings()
+
+        main_layout = QtWidgets.QVBoxLayout()
+        main_layout.addWidget(self.ui)
+        self.setLayout(main_layout)
+
+    def setup_palette_shortcuts(self):
         del_hotkey = QtWidgets.QShortcut(
             QtGui.QKeySequence("DEL"),
             self.ui.command_palette_widget.graphics_view,
@@ -93,14 +105,19 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         )
         del_hotkey.setContext(QtCore.Qt.WidgetShortcut)
 
-        # build ui
-        self.refresh_favorites()
-        self.refresh_scripts()
-        self.load_settings()
+        save_layout_hotkey = QtWidgets.QShortcut(
+            QtGui.QKeySequence("Ctrl+S"),
+            self.ui.command_palette_widget.graphics_view,
+            self.save_favorites_layout,
+        )
+        save_layout_hotkey.setContext(QtCore.Qt.WidgetShortcut)
 
-        main_layout = QtWidgets.QVBoxLayout()
-        main_layout.addWidget(self.ui)
-        self.setLayout(main_layout)
+        load_layout_hotkey = QtWidgets.QShortcut(
+            QtGui.QKeySequence("F5"),
+            self.ui.command_palette_widget.graphics_view,
+            self.load_favorites_layout,
+        )
+        load_layout_hotkey.setContext(QtCore.Qt.WidgetShortcut)
 
     def build_context_menu(self):
         script_is_selected = any(self.ui.scripts_TV.get_selected_script_paths())
@@ -233,7 +250,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
         parent_item.appendRow(item)
 
-    def refresh_favorites(self):
+    def load_favorites_layout(self):
         favorite_scripts = self.settings.get_value(ScriptPanelSettings.k_favorites, default=list())
         self.ui.command_palette_widget.clear()
 
@@ -281,6 +298,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.settings.setValue(self.settings.k_favorites, favorite_scripts)
         self.settings.setValue(self.settings.k_favorites_layout, user_layout)
         self.settings.setValue(self.settings.k_favorites_display, scripts_display_info)
+        print("Layout Saved")
 
     def filter_scripts(self, text):
         search = QtCore.QRegExp(text, QtCore.Qt.CaseInsensitive, QtCore.QRegExp.RegExp)
