@@ -175,7 +175,7 @@ class ResizeHandle(QtWidgets.QGraphicsPolygonItem):
         self.setPolygon(self.myPolygon)
 
         self.setAcceptHoverEvents(True)
-        self.default_cursor = QtGui.Qt.SizeFDiagCursor
+        self.default_cursor = QtCore.Qt.SizeFDiagCursor
         self.setCursor(self.default_cursor)
 
     def mousePressEvent(self, event):
@@ -239,9 +239,9 @@ class PaletteRectItem(QtWidgets.QGraphicsRectItem):
         super(PaletteRectItem, self).__init__(*args, **kwargs)
 
         self.id = id
-        self.header_height = 40
+        self.header_height = 20
         self.show_header = True
-        self.resize_handle_size = 40
+        self.resize_handle_size = 20
         self._being_resized = False
         self.wrapped_widget = None
         self.is_selected = False
@@ -342,7 +342,7 @@ class CommandPaletteWidget(QtWidgets.QWidget):
         self.display_headers(ui_data.get("show_headers", True))
 
     def add_widget(self, id, widget, pos=None):
-        rect_item = PaletteRectItem(id, 0, 0, self.scene.grid_size * 16, self.scene.grid_size * 8)
+        rect_item = PaletteRectItem(id, 0, 0, self.scene.grid_size * 8, self.scene.grid_size * 4)
         rect_item.wrap_widget(widget)
         self.scene.addItem(rect_item)
         if pos:
