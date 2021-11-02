@@ -111,9 +111,30 @@ class PaletteGraphicsView(QtWidgets.QGraphicsView):
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.RightButton:
             self.select_item_under_cursor()
+            super(PaletteGraphicsView, self).mousePressEvent(event)
 
-        super(PaletteGraphicsView, self).mousePressEvent(event)
+        elif event.button() == QtCore.Qt.MiddleButton:
+            release_event = QtGui.QMouseEvent(QtCore.QEvent.MouseButtonRelease, event.localPos(), event.screenPos(),
+                                       QtCore.Qt.LeftButton, QtCore.Qt.NoButton, event.modifiers())
+            super(PaletteGraphicsView, self).mouseReleaseEvent(release_event)
+            self.toggle_drag_mode(True)
+            fake_event = QtGui.QMouseEvent(event.type(), event.localPos(), event.screenPos(),
+                                    QtCore.Qt.LeftButton, event.buttons() | QtCore.Qt.LeftButton, event.modifiers())
+            super(PaletteGraphicsView, self).mousePressEvent(fake_event)
+        else:
+            event.accept()
+            super(PaletteGraphicsView, self).mousePressEvent(event)
 
+    def mouseReleaseEvent(self, event):
+        if event.button() == QtCore.Qt.MiddleButton:
+            fakeEvent = QtGui.QMouseEvent(event.type(), event.localPos(), event.screenPos(),
+                                    QtCore.Qt.LeftButton, event.buttons() & QtCore.Qt.LeftButton, event.modifiers())
+            super(PaletteGraphicsView, self).mouseReleaseEvent(fakeEvent)
+            self.toggle_drag_mode(False)
+        else:
+            event.accept()
+            super(PaletteGraphicsView, self).mouseReleaseEvent(event)
+    
     def select_item_under_cursor(self):
         item_under_cursor = self.get_item_under_cursor()
         if item_under_cursor:
