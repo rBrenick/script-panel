@@ -334,7 +334,9 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
     def activate_script(self, script_path=None):
         if not script_path:
-            script_path = self.ui.scripts_TV.get_selected_script_paths()[0]
+            script_path = self.get_selected_script_path()
+            if not script_path:
+                return
 
         if sp_skyhook:
             if self.ui.skyhook_blender_CHK.isChecked():
@@ -345,20 +347,40 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
     def open_script_in_editor(self, script_path=None):
         if not script_path:
-            script_path = self.ui.scripts_TV.get_selected_script_paths()[0]
+            script_path = self.get_selected_script_path()
+            if not script_path:
+                return
+
         dcc_interface.open_script(script_path)
 
     def open_hotkey_editor(self, script_path=None):
         if not script_path:
-            script_path = self.ui.scripts_TV.get_selected_script_paths()[0]
+            script_path = self.get_selected_script_path()
+            if not script_path:
+                return
 
         from .ui import hotkey_editor
         hotkey_editor.main(reload=True, script_path=script_path)
 
     def open_script_in_explorer(self, script_path=None):
         if not script_path:
-            script_path = self.ui.scripts_TV.get_selected_script_paths(allow_folders=True)[0]
+            script_path = self.get_selected_script_path()
+            if not script_path:
+                return
+
         subprocess.Popen(r'explorer /select, "{}"'.format(script_path))
+
+    def get_selected_script_path(self):
+        selected_script_paths = self.ui.scripts_TV.get_selected_script_paths(allow_folders=True)
+        if not selected_script_paths:
+            return
+        script_path = selected_script_paths[0]
+
+        if not os.path.exists(script_path):
+            show_warning_path_does_not_exist(script_path)
+            return
+
+        return script_path
 
 
 class ScriptWidget(QtWidgets.QWidget):
