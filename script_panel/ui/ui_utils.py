@@ -20,13 +20,43 @@ ICON_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), "icons")
 active_dcc_is_maya = "maya" in os.path.basename(sys.executable).lower()
 active_dcc_is_houdini = "houdini" in os.path.basename(sys.executable).lower()
 
+standalone_app_window = None
+
 """
 QT UTILS BEGIN
 """
 
 
+class BaseSettings(QtCore.QSettings):
+    def get_value(self, key, default=None):
+        data_type = None
+        if default is not None:
+            data_type = type(default)
+
+        settings_val = self.value(key, defaultValue=default)
+        if settings_val is None:
+            return default
+
+        if data_type == list and not isinstance(settings_val, list):
+            settings_val = [settings_val] if settings_val else list()
+
+        if data_type == dict and not isinstance(settings_val, dict):
+            settings_val = dict(settings_val)
+
+        if data_type == int and not isinstance(settings_val, int):
+            settings_val = default if settings_val is None else int(settings_val)
+
+        if data_type == float and not isinstance(settings_val, float):
+            settings_val = default if settings_val is None else float(settings_val)
+
+        if data_type == bool:
+            settings_val = True if settings_val in ("true", "True", "1", 1, True) else False
+
+        return settings_val
+
+
 def get_app_window():
-    top_window = None
+    top_window = standalone_app_window
 
     if active_dcc_is_maya:
         from maya import OpenMayaUI as omui
@@ -233,6 +263,23 @@ def set_settings_value(settings_obj, key, value, post_set_command=None):
     if post_set_command:
         post_set_command()
 
+
+def open_color_picker(current_color=None, color_signal=None):
+    picker = QtWidgets.QColorDialog(parent=get_app_window())
+
+    if current_color:
+        if isinstance(current_color, (list, tuple)):
+            color = QtGui.QColor()
+            color.setRgb(*current_color)
+        else:
+            color = current_color
+        picker.setCurrentColor(color)
+
+    if color_signal:
+        picker.currentColorChanged.connect(color_signal)
+
+    if picker.exec_():
+        return picker.currentColor()
 
 """
 QT UTILS END

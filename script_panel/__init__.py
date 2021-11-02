@@ -17,6 +17,7 @@ def reload_modules():
         from imp import reload
 
     from script_panel.ui import folder_model
+    from script_panel.ui import command_palette
     from script_panel.dcc import script_panel_dcc_base
     from script_panel import dcc as script_panel_dcc
     from script_panel.ui import hotkey_editor
@@ -30,6 +31,7 @@ def reload_modules():
         pass
 
     reload(folder_model)
+    reload(command_palette)
     reload(hotkey_editor)
     reload(script_panel_dcc_base)
     reload(script_panel_dcc.dcc_module)
