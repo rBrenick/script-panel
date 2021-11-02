@@ -178,8 +178,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         if sp_skyhook:
             skyhook_enabled = self.settings.get_value(self.settings.k_skyhook_enabled, default=False)
             self.ui.skyhook_blender_CHK.setChecked(skyhook_enabled)
-        palette_display_settings = self.settings.get_value(ScriptPanelSettings.k_palette_display, default=dict())
-        self.ui.command_palette_widget.set_ui_settings(palette_display_settings)
+        self.load_favorites_settings()
 
     def refresh_scripts(self):
         self.model.clear()
@@ -256,14 +255,20 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         parent_item.appendRow(item)
 
     def load_favorites_layout(self):
-        favorite_scripts = self.settings.get_value(ScriptPanelSettings.k_favorites, default=list())
+        self.settings.sync()  # sync from disk
         self.ui.command_palette_widget.clear()
 
+        favorite_scripts = self.settings.get_value(ScriptPanelSettings.k_favorites, default=list())
         for script_path in favorite_scripts:
             self.add_favorite_widget(script_path)
 
+        self.load_favorites_settings()
+
+    def load_favorites_settings(self):
         user_layout = self.settings.get_value(ScriptPanelSettings.k_favorites_layout, default=dict())
+        palette_display_settings = self.settings.get_value(ScriptPanelSettings.k_palette_display, default=dict())
         self.ui.command_palette_widget.set_scene_layout(user_layout)
+        self.ui.command_palette_widget.set_ui_settings(palette_display_settings)
 
     def add_script_to_favorites(self, script_path):
         self.settings.add_to_favorites(script_path)
@@ -309,7 +314,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.settings.setValue(self.settings.k_favorites_layout, user_layout)
         self.settings.setValue(self.settings.k_favorites_display, scripts_display_info)
         self.settings.setValue(self.settings.k_palette_display, self.ui.command_palette_widget.get_ui_settings())
-        print("Layout Saved")
+        print("Command Palette - layout saved")
 
     def filter_scripts(self, text):
         search = QtCore.QRegExp(text, QtCore.Qt.CaseInsensitive, QtCore.QRegExp.RegExp)
