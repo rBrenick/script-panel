@@ -273,19 +273,28 @@ class PaletteRectItem(QtWidgets.QGraphicsRectItem):
         self.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, True)
         self.setFlag(QtWidgets.QGraphicsItem.ItemSendsGeometryChanges, True)
         self.setBrush(QtCore.Qt.darkGray)
+        self.setCursor(QtCore.Qt.SizeAllCursor)
 
         self.proxy_widget = QtWidgets.QGraphicsProxyWidget(self)
         self.resize_button = ResizeHandle(self.resize_handle_size)
         self.resize_button.setParentItem(self)
         self.resize_button.setBrush(QtCore.Qt.lightGray)
-        self.text_item = QtWidgets.QGraphicsTextItem(self)
-        self.text_item.setPlainText(id)
+        self.text_item = QtWidgets.QGraphicsSimpleTextItem(self)
+        self.text_item.setText(id)
 
     def set_widget_geometry(self):
         header_height = self.header_height if self.show_header else 0
         box_width, box_height = self.rect().width(), self.rect().height()
 
-        self.text_item.show() if self.show_header else self.text_item.hide()
+        if self.show_header:
+            self.text_item.show()
+
+            # center header text in rect
+            text_width = self.text_item.boundingRect().width()
+            text_mid_point = (self.rect().width() / 2) - (text_width / 2)
+            self.text_item.setPos(text_mid_point, 0)
+        else:
+            self.text_item.hide()
 
         self.wrapped_widget.setGeometry(0, 0, box_width, box_height - header_height)
         self.proxy_widget.setPos(0, header_height)
