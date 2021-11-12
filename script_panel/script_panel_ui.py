@@ -1,5 +1,6 @@
 __author__ = "Richard Brenick"
 
+import logging
 # Standard
 import os.path
 import subprocess
@@ -121,17 +122,25 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         load_layout_hotkey.setContext(QtCore.Qt.WidgetShortcut)
 
     def build_context_menu(self):
-        script_is_selected = any(self.ui.scripts_TV.get_selected_script_paths())
+        selected_path = self.ui.scripts_TV.get_selected_script_paths(allow_folders=True)
 
         # right click menu
         script_panel_context_actions = []
-        if script_is_selected:
-            script_panel_context_actions.extend([
-                {"Run": self.activate_script},
-                {"Edit": self.open_script_in_editor},
-                {"Create Hotkey / Shelf button": self.open_hotkey_editor},
-                "-",
-            ])
+        if any(selected_path):
+            if os.path.isdir(selected_path[0]):
+                # folder actions
+                script_panel_context_actions.extend([
+                    {"Add Script": self.create_script},
+                    "-",
+                ])
+            else:
+                # script actions
+                script_panel_context_actions.extend([
+                    {"Run": self.activate_script},
+                    {"Edit": self.open_script_in_editor},
+                    {"Create Hotkey / Shelf button": self.open_hotkey_editor},
+                    "-",
+                ])
 
         script_panel_context_actions.extend([
             {"RADIO_SETTING": {"settings": self.settings,
@@ -376,6 +385,32 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
         subprocess.Popen(r'explorer /select, "{}"'.format(script_path))
 
+    def create_script(self):
+        script_name, ok = QtWidgets.QInputDialog.getText(
+            self,
+            "Script Name",
+            "Enter the name of the new script",
+            QtWidgets.QLineEdit.Normal,
+        )
+        if not ok or not script_name:
+            return
+
+        # make sure we have an extension on this script
+        if "." not in script_name:
+            script_name = "{}.py".format(script_name)
+
+        folder_path = self.get_selected_script_path()
+        script_path = os.path.join(folder_path, script_name)
+        if os.path.exists(script_path):
+            logging.warning("File already exists, opening: {}".format(script_path))
+            self.open_script_in_editor(script_path)
+            return
+
+        with open(script_path, "w+"):
+            pass
+        self.open_script_in_editor(script_path)
+        self.refresh_scripts()
+
     def get_selected_script_path(self):
         selected_script_paths = self.ui.scripts_TV.get_selected_script_paths(allow_folders=True)
         if not selected_script_paths:
@@ -500,7 +535,7 @@ class ScriptWidget(QtWidgets.QWidget):
             self.trigger_btn.setIcon(q_icon)
             self.icon_path = icon_path
         except Exception as e:
-            print("Unable to set icon: ", e)
+            logging.warning("Unable to set icon: ", e)
 
 
 class ScriptModelItem(QtGui.QStandardItem):
