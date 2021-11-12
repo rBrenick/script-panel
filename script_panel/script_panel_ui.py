@@ -481,7 +481,11 @@ class ScriptWidget(QtWidgets.QWidget):
         self.trigger_btn.setStyleSheet(BACKGROUND_COLOR_FORM.format(*color))
 
     def open_icon_browser(self):
-        selected_file, _ = QtWidgets.QFileDialog.getOpenFileName(ui_utils.get_app_window(), "Select icon")
+        selected_file, _ = QtWidgets.QFileDialog.getOpenFileName(
+            ui_utils.get_app_window(),
+            "Select icon",
+            filter="Image Files (*.bmp *.cur *.gif *.icns *.ico *.jpeg *.jpg *.pbm *.pgm *.png *.ppm *.svg *.svgz *.tga *.tif *.tiff *.wbmp *.webp *.xbm *.xpm);;",
+        )
         if selected_file:
             self.set_icon_from_path(selected_file)
 
