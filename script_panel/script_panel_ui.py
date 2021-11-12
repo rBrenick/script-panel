@@ -129,7 +129,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
             script_panel_context_actions.extend([
                 {"Run": self.activate_script},
                 {"Edit": self.open_script_in_editor},
-                {"Create Hotkey": self.open_hotkey_editor},
+                {"Create Hotkey / Shelf button": self.open_hotkey_editor},
                 "-",
             ])
 

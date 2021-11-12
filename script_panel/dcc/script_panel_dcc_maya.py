@@ -22,8 +22,12 @@ class MayaInterface(script_panel_dcc_base.BaseInterface):
         return open_script(script_path)
 
     @staticmethod
-    def setup_dcc_hotkey(*args, **kwargs):
-        return setup_dcc_hotkey(*args, **kwargs)
+    def setup_hotkey(*args, **kwargs):
+        return setup_maya_hotkey(*args, **kwargs)
+
+    @staticmethod
+    def add_to_shelf(*args, **kwargs):
+        return add_script_to_maya_shelf(*args, **kwargs)
 
 
 def open_script(script_path):
@@ -88,7 +92,7 @@ def run_mel_script(script_path):
     return mel.eval(mel_script)
 
 
-def setup_dcc_hotkey(shortcut_name, shortcut, command_str, category="Custom"):
+def setup_maya_hotkey(shortcut_name, shortcut, command_str, category="Custom"):
     """
     Create a hotkey command
     if a shortcut is provided, connect the command to that shortcut
@@ -129,3 +133,8 @@ def setup_dcc_hotkey(shortcut_name, shortcut, command_str, category="Custom"):
             alt="alt" in shortcut.lower(),
             sht="shift" in shortcut.lower(),
         )
+
+
+def add_script_to_maya_shelf(script_name, script, file_extension):
+    shelf_type = "0" if file_extension == ".py" else "1"
+    pm.mel.scriptToShelf(script_name, script, shelf_type)

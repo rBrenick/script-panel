@@ -34,6 +34,7 @@ class HotkeyEditorWindow(ui_utils.ToolWindow):
         self.command_type = lk.reference_script
 
         self.ui.create_hotkey_BTN.clicked.connect(self.create_hotkey)
+        self.ui.create_shelf_BTN.clicked.connect(self.create_shelf_button)
         self.ui.command_type_CB.currentTextChanged.connect(self.toggle_command_type)
 
     def set_hotkey_script(self, script_path):
@@ -74,8 +75,19 @@ class HotkeyEditorWindow(ui_utils.ToolWindow):
         shortcut = self.ui.shortcut_hotkey_LE.text()
         command_str = self.ui.hotkey_script_TE.toPlainText()
 
-        dcc_interface.setup_dcc_hotkey(shortcut_name, shortcut, command_str, category="ScriptPanelCommands")
+        dcc_interface.setup_hotkey(shortcut_name, shortcut, command_str, category="ScriptPanelCommands")
         sys.stdout.write("Hotkey created as a {}: {}\n".format(self.command_type, shortcut_name))
+
+    def create_shelf_button(self):
+        script_name = self.ui.shortcut_name_LE.text()
+        command_str = self.ui.hotkey_script_TE.toPlainText()
+
+        dcc_interface.add_to_shelf(
+            script_name,
+            command_str,
+            file_extension=os.path.splitext(self.referenced_script_path)[-1],
+        )
+        sys.stdout.write("Shelf button created as a {}: {}\n".format(self.command_type, script_name))
 
 
 class HotkeyEditorWidget(QtWidgets.QWidget):
@@ -109,11 +121,19 @@ class HotkeyEditorWidget(QtWidgets.QWidget):
         self.create_hotkey_BTN.setMinimumHeight(50)
         self.create_hotkey_BTN.setStyleSheet("background-color:rgb(80, 150, 120)")
 
+        # create shelf button
+        self.create_shelf_BTN = QtWidgets.QPushButton("Create Shelf Button")
+        self.create_shelf_BTN.setMinimumHeight(50)
+        self.create_shelf_BTN.setStyleSheet("background-color:rgb(80, 150, 120)")
+
         self.main_layout.addWidget(self.shortcut_name_LE)
         self.main_layout.addWidget(self.command_type_CB)
         self.main_layout.addWidget(self.hotkey_script_TE)
         self.main_layout.addWidget(self.shortcut_hotkey_LE)
-        self.main_layout.addWidget(self.create_hotkey_BTN)
+        buttons_layout = QtWidgets.QHBoxLayout()
+        buttons_layout.addWidget(self.create_hotkey_BTN)
+        buttons_layout.addWidget(self.create_shelf_BTN)
+        self.main_layout.addLayout(buttons_layout)
         self.setLayout(self.main_layout)
 
 
