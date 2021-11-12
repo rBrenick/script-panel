@@ -194,6 +194,9 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         header = self.ui.scripts_TV.header()
         header.setSectionResizeMode(0, header.ResizeToContents)
 
+        # run text in filter
+        self.filter_scripts()
+
     def add_script_to_model(self, script_path, path_info):
         path_root_dir = path_info.get(spu.PathInfoKeys.root_dir)
         display_prefix = path_info.get(spu.PathInfoKeys.folder_prefix)
@@ -316,7 +319,10 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.settings.setValue(self.settings.k_palette_display, self.ui.command_palette_widget.get_ui_settings())
         print("Command Palette - layout saved")
 
-    def filter_scripts(self, text):
+    def filter_scripts(self, text=None):
+        if text is None:
+            text = self.ui.search_LE.text()
+
         search = QtCore.QRegExp(text, QtCore.Qt.CaseInsensitive, QtCore.QRegExp.RegExp)
         self.proxy.setFilterRegExp(search)
         if not text:
