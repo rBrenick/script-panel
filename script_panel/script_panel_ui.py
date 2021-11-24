@@ -166,6 +166,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
             {"Remove from favorites": self.remove_scripts_from_favorites},
             {"Hide Headers": self.ui.command_palette_widget.hide_headers},
             {"Show Headers": self.ui.command_palette_widget.show_headers},
+            {"Set Grid Size": self.ui.command_palette_widget.open_grid_size_setter},
         ]
 
         if selected_script_widget:
@@ -279,8 +280,8 @@ class ScriptPanelWidget(QtWidgets.QWidget):
     def load_favorites_settings(self):
         user_layout = self.settings.get_value(ScriptPanelSettings.k_favorites_layout, default=dict())
         palette_display_settings = self.settings.get_value(ScriptPanelSettings.k_palette_display, default=dict())
-        self.ui.command_palette_widget.set_scene_layout(user_layout)
         self.ui.command_palette_widget.set_ui_settings(palette_display_settings)
+        self.ui.command_palette_widget.set_scene_layout(user_layout)
 
     def add_script_to_favorites(self, script_path):
         self.settings.add_to_favorites(script_path)

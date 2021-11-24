@@ -4,41 +4,13 @@ import sys
 from script_panel.ui.ui_utils import QtCore, QtGui, QtWidgets, BaseSettings
 
 
-# class ControlView(QtWidgets.QGraphicsView):
-#     """
-#     Base class to create the control view
-#     """
-#
-#     def __init__(self, scene, parent):
-#         """
-#         @param scene: QGraphicsScene that defines the scene we want to visualize
-#         @param parent: QWidget parent
-#         """
-#         super(ControlView, self).__init__(parent)
-#
-#         self.setObjectName('ControlView')
-#         self.setScene(scene)
-#         self.setRenderHint(QtGui.QPainter.Antialiasing)
-#         self.setTransformationAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
-#         self.setViewportUpdateMode(QtWidgets.QGraphicsView.SmartViewportUpdate)
-#
-#         self.setAcceptDrops(True)
-#         self.setDragMode(QtWidgets.QGraphicsView.ScrollHandDrag)
-#
-#         self.dragOver = False
-#
-#     def dragMoveEvent(self, event):
-#         pass
-#
-#     def dragEnterEvent(self, event):
-#         if event.mimeData().hasText():
-#             event.setAccepted(True)
-#             self.dragOver = True
-#             self.update()
-#
-#     def dropEvent(self, event):
-#         pos = event.pos()
-#         event.acceptProposedAction()
+class LocalConstants:
+    default_grid_size = 20
+    header_height = 10
+
+
+lk = LocalConstants
+
 
 class PaletteScene(QtWidgets.QGraphicsScene):
     def __init__(self, *args, **kwargs):
@@ -46,7 +18,7 @@ class PaletteScene(QtWidgets.QGraphicsScene):
         self._background_color = QtGui.QColor(50, 50, 50)
         self._background_color_light = QtGui.QColor(100, 100, 100)
 
-        self.grid_size = 20
+        self.grid_size = lk.default_grid_size
         self.grid_pen = QtGui.QPen(self._background_color_light)
         self.grid_pen.setWidth(1)
 
@@ -187,19 +159,24 @@ class PaletteGraphicsView(QtWidgets.QGraphicsView):
 
 
 class ResizeHandle(QtWidgets.QGraphicsPolygonItem):
-    def __init__(self, handle_size, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(ResizeHandle, self).__init__(*args, **kwargs)
         self._being_resized = False
         self._being_moved = False
 
-        handle_points = [[handle_size, 0], [0, handle_size], [handle_size, handle_size]]
-        self.myPolygon = QtGui.QPolygonF([QtCore.QPointF(v1, v2) for v1, v2 in handle_points])
-        self.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0)))
-        self.setPolygon(self.myPolygon)
+        self.handle_size = lk.default_grid_size
+        self.update_size(self.handle_size)
 
         self.setAcceptHoverEvents(True)
         self.default_cursor = QtCore.Qt.SizeFDiagCursor
         self.setCursor(self.default_cursor)
+
+    def update_size(self, new_size):
+        self.handle_size = new_size
+        handle_points = [[new_size, 0], [0, new_size], [new_size, new_size]]
+        self.myPolygon = QtGui.QPolygonF([QtCore.QPointF(v1, v2) for v1, v2 in handle_points])
+        self.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0)))
+        self.setPolygon(self.myPolygon)
 
     def mousePressEvent(self, event):
         """
@@ -262,9 +239,9 @@ class PaletteRectItem(QtWidgets.QGraphicsRectItem):
         super(PaletteRectItem, self).__init__(*args, **kwargs)
 
         self.id = id
-        self.header_height = 20
+        self.header_height = lk.header_height
         self.show_header = True
-        self.resize_handle_size = 20
+        self.resize_handle_size = lk.default_grid_size
         self._being_resized = False
         self.wrapped_widget = None
         self.is_selected = False
@@ -276,7 +253,7 @@ class PaletteRectItem(QtWidgets.QGraphicsRectItem):
         self.setCursor(QtCore.Qt.SizeAllCursor)
 
         self.proxy_widget = QtWidgets.QGraphicsProxyWidget(self)
-        self.resize_button = ResizeHandle(self.resize_handle_size)
+        self.resize_button = ResizeHandle()
         self.resize_button.setParentItem(self)
         self.resize_button.setBrush(QtCore.Qt.lightGray)
         self.text_item = QtWidgets.QGraphicsSimpleTextItem(self)
@@ -366,12 +343,14 @@ class CommandPaletteWidget(QtWidgets.QWidget):
         self.setLayout(self.main_layout)
 
     def get_ui_settings(self):
-        return {
-            "show_headers": self._display_headers
-        }
+        ui_settings = dict()
+        ui_settings["show_headers"] = self._display_headers
+        ui_settings["grid_size"] = self.scene.grid_size
+        return ui_settings
 
     def set_ui_settings(self, ui_data):
         self.display_headers(ui_data.get("show_headers", True))
+        self.set_grid_size(ui_data.get("grid_size"))
 
     def add_widget(self, id, widget, pos=None):
         rect_item = PaletteRectItem(id, 0, 0, self.scene.grid_size * 8, self.scene.grid_size * 4)
@@ -428,6 +407,30 @@ class CommandPaletteWidget(QtWidgets.QWidget):
         self._display_headers = state
         for scene_item in self._scene_items:  # type: PaletteRectItem
             scene_item.show_header = state
+            scene_item.set_widget_geometry()
+
+    def open_grid_size_setter(self):
+        new_size, ok = QtWidgets.QInputDialog.getInt(
+            self,
+            "Set Grid Size",
+            "Size:",
+            self.scene.grid_size,
+            1,  # min
+            1000,  # max
+            1  # precision
+        )
+        if not ok:
+            return
+
+        self.set_grid_size(new_size)
+
+    def set_grid_size(self, new_size):
+        if new_size is None:
+            return
+        self.scene.grid_size = new_size
+        for scene_item in self._scene_items: # type: PaletteRectItem
+            scene_item.resize_button.update_size(new_size)
+            scene_item.resize_handle_size = new_size
             scene_item.set_widget_geometry()
 
     def get_mouse_pos(self):
