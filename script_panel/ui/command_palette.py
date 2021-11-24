@@ -6,7 +6,7 @@ from script_panel.ui.ui_utils import QtCore, QtGui, QtWidgets, BaseSettings
 
 class LocalConstants:
     default_grid_size = 20
-    header_height = 10
+    header_height = 15
 
 
 lk = LocalConstants
