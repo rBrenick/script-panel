@@ -1,6 +1,7 @@
 import json
 import os
 import runpy
+import subprocess
 import sys
 from collections import OrderedDict
 
@@ -158,6 +159,9 @@ def get_scripts(env_data=None):
             continue
 
         root_type = path_data.get(lk.root_type)
+        if root_type == "p4":
+            subprocess.Popen(["p4", "sync", root_folder + r"\..."], cwd=os.path.dirname(root_folder), shell=True)
+
         display_prefix = path_data.get(lk.folder_display_prefix)
         for folder, __, script_names in walk_func(root_folder):
             for script_name in script_names:
