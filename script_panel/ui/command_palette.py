@@ -413,7 +413,7 @@ class CommandPaletteWidget(QtWidgets.QWidget):
         new_size, ok = QtWidgets.QInputDialog.getInt(
             self,
             "Set Grid Size",
-            "Size:",
+            "Size (default is {}):".format(lk.default_grid_size),
             self.scene.grid_size,
             1,  # min
             1000,  # max
@@ -428,7 +428,7 @@ class CommandPaletteWidget(QtWidgets.QWidget):
         if new_size is None:
             return
         self.scene.grid_size = new_size
-        for scene_item in self._scene_items: # type: PaletteRectItem
+        for scene_item in self._scene_items:  # type: PaletteRectItem
             scene_item.resize_button.update_size(new_size)
             scene_item.resize_handle_size = new_size
             scene_item.set_widget_geometry()
