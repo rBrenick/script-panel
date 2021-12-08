@@ -18,6 +18,7 @@ dcc_name = dcc_interface.name.lower()
 
 class SettingsConstants:
     default_layout_name = "-user-"
+    backup_folder_name = "_BACKUPS"
     active_layout = "active_layout"
     settings_version = "settings_version"
 
@@ -52,7 +53,7 @@ class ScriptPanelSettings(ui_utils.BaseSettings):
         self.active_layout = self.get_value(sk.active_layout, default=sk.default_layout_name)
 
         self.user_layouts_folder = os.path.join(os.path.dirname(self.fileName()), "{}_layouts".format(dcc_name))
-        self.layout_backups_folder = os.path.join(os.path.dirname(self.fileName()), "{}_backups".format(dcc_name))
+        self.layout_backups_folder = os.path.join(self.user_layouts_folder, sk.backup_folder_name)
         if not os.path.exists(self.user_layouts_folder):
             os.makedirs(self.user_layouts_folder)
         if not os.path.exists(self.layout_backups_folder):
@@ -113,6 +114,8 @@ class ScriptPanelSettings(ui_utils.BaseSettings):
     def get_layout_names(self):
         names = []
         for file_name in os.listdir(self.user_layouts_folder):
+            if file_name == sk.backup_folder_name:
+                continue
             names.append(os.path.splitext(file_name)[0])
 
         # make sure the default layout is there
