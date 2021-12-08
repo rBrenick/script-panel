@@ -17,7 +17,7 @@ from script_panel.ui.ui_utils import QtCore, QtWidgets, QtGui
 
 try:
     from script_panel.dcc import script_panel_skyhook as sp_skyhook
-except ImportError as e:
+except Exception as e:
     print("Optional skyhook import failed: {}".format(e))
     sp_skyhook = None
 
