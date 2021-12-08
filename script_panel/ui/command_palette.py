@@ -116,7 +116,8 @@ class PaletteGraphicsView(QtWidgets.QGraphicsView):
             item_under_cursor.setSelected(True)
 
     def get_item_under_cursor(self):
-        scene_pos = self.mapFromGlobal(self.cursor().pos())
+        graphics_view_pos = self.mapFromGlobal(QtGui.QCursor().pos())
+        scene_pos = self.mapToScene(graphics_view_pos)
         item_under_cursor = self.scene().itemAt(scene_pos, QtGui.QTransform())
         if not item_under_cursor:
             return
@@ -346,11 +347,21 @@ class CommandPaletteWidget(QtWidgets.QWidget):
         ui_settings = dict()
         ui_settings["show_headers"] = self._display_headers
         ui_settings["grid_size"] = self.scene.grid_size
+
+        v = self.graphics_view.viewportTransform()  # type: QtGui.QTransform
+        ui_settings["viewport_transform"] = [
+            v.m11(), v.m12(), v.m13(),
+            v.m21(), v.m22(), v.m23(),
+            v.m31(), v.m32(), v.m33(),
+        ]
         return ui_settings
 
     def set_ui_settings(self, ui_data):
         self.display_headers(ui_data.get("show_headers", True))
         self.set_grid_size(ui_data.get("grid_size"))
+        view_transform = ui_data.get("viewport_transform")
+        # if view_transform:
+        #     self.graphics_view.setTransform(QtGui.QTransform(*view_transform))
 
     def add_widget(self, id, widget, pos=None):
         rect_item = PaletteRectItem(id, 0, 0, self.scene.grid_size * 8, self.scene.grid_size * 4)

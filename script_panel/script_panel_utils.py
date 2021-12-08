@@ -21,6 +21,7 @@ else:
 class LocalConstants:
     run_script_on_click = "Run Script on Double Click"
     edit_script_on_click = "Edit Script on Double Click"
+    default_layout_name = "-user-"
 
     dcc_maya = "Maya"
     dcc_blender = "Maya"

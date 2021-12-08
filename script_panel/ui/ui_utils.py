@@ -1,7 +1,7 @@
 # Standard
+import functools
 import os
 import sys
-import functools
 from functools import partial
 
 # Not even going to pretend to have Maya 2016 support
@@ -21,10 +21,6 @@ active_dcc_is_maya = "maya" in os.path.basename(sys.executable).lower()
 active_dcc_is_houdini = "houdini" in os.path.basename(sys.executable).lower()
 
 standalone_app_window = None
-
-"""
-QT UTILS BEGIN
-"""
 
 
 class BaseSettings(QtCore.QSettings):
@@ -201,7 +197,7 @@ else:
     ToolWindow = CoreToolWindow
 
 
-def build_menu_from_action_list(actions, menu=None, is_sub_menu=False):
+def build_menu_from_action_list(actions, menu=None, is_sub_menu=False, extra_trigger=None):
     if not menu:
         menu = QtWidgets.QMenu()
 
@@ -237,19 +233,29 @@ def build_menu_from_action_list(actions, menu=None, is_sub_menu=False):
                                                                settings_obj,
                                                                settings_key,
                                                                choice_key))
+                    if extra_trigger:
+                        action.triggered.connect(extra_trigger)
                     menu.addAction(action)
                     grp.addAction(action)
 
                 grp.setExclusive(True)
                 continue
 
+            # recursive
             if isinstance(action_command, list):
                 sub_menu = menu.addMenu(action_title)
-                build_menu_from_action_list(action_command, menu=sub_menu, is_sub_menu=True)
+                build_menu_from_action_list(
+                    action_command,
+                    menu=sub_menu,
+                    is_sub_menu=True,
+                    extra_trigger=extra_trigger,
+                )
                 continue
 
             atn = menu.addAction(action_title)
             atn.triggered.connect(action_command)
+            if extra_trigger:
+                atn.triggered.connect(extra_trigger)
 
     if not is_sub_menu:
         cursor = QtGui.QCursor()
@@ -281,6 +287,8 @@ def open_color_picker(current_color=None, color_signal=None):
     if picker.exec_():
         return picker.currentColor()
 
-"""
-QT UTILS END
-"""
+
+def set_combo_index_via_text(cb, text):
+    index = cb.findText(text, QtCore.Qt.MatchExactly)
+    if index != -1:
+        cb.setCurrentIndex(index)
