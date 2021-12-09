@@ -24,6 +24,9 @@ except Exception as e:
 standalone_app = None
 if not QtWidgets.QApplication.instance():
     standalone_app = QtWidgets.QApplication(sys.argv)
+    ui_stylesheet_path = os.path.join(os.path.dirname(__file__), "ui", "stylesheets", "Combinear.qss")
+    with open(ui_stylesheet_path) as fp:
+        standalone_app.setStyleSheet(fp.read())
 
 dcc_interface = dcc.DCCInterface()
 BACKGROUND_COLOR_FORM = "background-color:rgb({0}, {1}, {2})"
