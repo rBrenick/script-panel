@@ -115,9 +115,13 @@ class PaletteGraphicsView(QtWidgets.QGraphicsView):
             self.scene().clearSelection()
             item_under_cursor.setSelected(True)
 
-    def get_item_under_cursor(self):
+    def get_cursor_scene_pos(self):
         graphics_view_pos = self.mapFromGlobal(QtGui.QCursor().pos())
         scene_pos = self.mapToScene(graphics_view_pos)
+        return scene_pos
+
+    def get_item_under_cursor(self):
+        scene_pos = self.get_cursor_scene_pos()
         item_under_cursor = self.scene().itemAt(scene_pos, QtGui.QTransform())
         if not item_under_cursor:
             return
@@ -445,9 +449,7 @@ class CommandPaletteWidget(QtWidgets.QWidget):
             scene_item.set_widget_geometry()
 
     def get_mouse_pos(self):
-        cursor = QtGui.QCursor()
-        scene_cursor_pos = self.graphics_view.mapFromGlobal(cursor.pos())
-        return scene_cursor_pos.toTuple()
+        return self.graphics_view.get_cursor_scene_pos().toTuple()
 
     def get_selected_items(self):
         return [item for item in self._scene_items if item.is_selected]
