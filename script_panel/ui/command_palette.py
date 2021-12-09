@@ -1,11 +1,13 @@
 import math
 import sys
 
+from script_panel.ui import ui_utils
 from script_panel.ui.ui_utils import QtCore, QtGui, QtWidgets, BaseSettings
 
 
 class LocalConstants:
     default_grid_size = 20
+    default_grid_color = QtGui.QColor(50, 50, 50)
     header_height = 15
 
 
@@ -15,7 +17,7 @@ lk = LocalConstants
 class PaletteScene(QtWidgets.QGraphicsScene):
     def __init__(self, *args, **kwargs):
         super(PaletteScene, self).__init__(*args, **kwargs)
-        self._background_color = QtGui.QColor(50, 50, 50)
+        self._background_color = lk.default_grid_color
         self._background_color_light = QtGui.QColor(100, 100, 100)
 
         self.grid_size = lk.default_grid_size
@@ -351,6 +353,7 @@ class CommandPaletteWidget(QtWidgets.QWidget):
         ui_settings = dict()
         ui_settings["show_headers"] = self._display_headers
         ui_settings["grid_size"] = self.scene.grid_size
+        ui_settings["grid_background_color"] = self.scene.backgroundBrush().color().getRgb()[:3]
 
         v = self.graphics_view.viewportTransform()  # type: QtGui.QTransform
         ui_settings["viewport_transform"] = [
@@ -363,6 +366,7 @@ class CommandPaletteWidget(QtWidgets.QWidget):
     def set_ui_settings(self, ui_data):
         self.display_headers(ui_data.get("show_headers", True))
         self.set_grid_size(ui_data.get("grid_size"))
+        self.set_grid_color(ui_data.get("grid_background_color"))
         view_transform = ui_data.get("viewport_transform")
         # if view_transform:
         #     self.graphics_view.setTransform(QtGui.QTransform(*view_transform))
@@ -447,6 +451,32 @@ class CommandPaletteWidget(QtWidgets.QWidget):
             scene_item.resize_button.update_size(new_size)
             scene_item.resize_handle_size = new_size
             scene_item.set_widget_geometry()
+
+    def open_grid_background_color_setter(self):
+        brush = self.scene.backgroundBrush()  # type: QtGui.QBrush
+        pre_color = brush.color()
+
+        new_color = ui_utils.open_color_picker(
+            current_color=pre_color,
+            color_signal=self.set_grid_color,
+        )
+        if new_color:
+            self.set_grid_color(new_color)
+        else:
+            self.set_grid_color(pre_color)
+
+    def set_grid_color(self, color=None):
+        if color is None:
+            color = lk.default_grid_color
+
+        if isinstance(color, (list, tuple)):
+            color = QtGui.QColor.fromRgb(*color)
+
+        self.scene.setBackgroundBrush(color)
+
+    def reset_grid_display(self):
+        self.set_grid_size(lk.default_grid_size)
+        self.set_grid_color(lk.default_grid_color)
 
     def get_mouse_pos(self):
         return self.graphics_view.get_cursor_scene_pos().toTuple()

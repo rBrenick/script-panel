@@ -26,6 +26,7 @@ if not QtWidgets.QApplication.instance():
     standalone_app = QtWidgets.QApplication(sys.argv)
 
     from script_panel.ui import stylesheets
+
     stylesheets.apply_standalone_stylesheet()
 
 dcc_interface = dcc.DCCInterface()
@@ -152,6 +153,8 @@ class ScriptPanelWidget(QtWidgets.QWidget):
             {"Hide Headers": self.ui.command_palette_widget.hide_headers},
             {"Show Headers": self.ui.command_palette_widget.show_headers},
             {"Set Grid Size": self.ui.command_palette_widget.open_grid_size_setter},
+            {"Set Grid Color": self.ui.command_palette_widget.open_grid_background_color_setter},
+            {"Reset Grid": self.ui.command_palette_widget.reset_grid_display},
         ]
 
         if selected_script_widget:
