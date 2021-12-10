@@ -374,13 +374,6 @@ QComboBox::drop-down
 }
 
 
-QComboBox::down-arrow
-{
-    image: url(://arrow-down.png);
-    width: 8px;
-    height: 8px;
-}
-
 
 /*-----QSpinBox & QDateTimeEdit-----*/
 QSpinBox,
@@ -428,7 +421,6 @@ QDateTimeEdit::up-button:pressed
 QSpinBox::up-arrow,
 QDateTimeEdit::up-arrow
 {
-    image: url(://arrow-up.png);
     width: 7px;
     height: 7px;
 
@@ -467,7 +459,6 @@ QDateTimeEdit::down-button:pressed
 QSpinBox::down-arrow,
 QDateTimeEdit::down-arrow
 {
-    image: url(://arrow-down.png);
     width: 7px;
     height: 7px;
 
@@ -597,22 +588,6 @@ QTreeView::item:!selected:hover
 }
 
 
-QTreeView::branch:has-children:!has-siblings:closed,
-QTreeView::branch:closed:has-children:has-siblings 
-{
-	image: url(://tree-closed.png);
-
-}
-
-
-QTreeView::branch:open:has-children:!has-siblings,
-QTreeView::branch:open:has-children:has-siblings  
-{
-	image: url(://tree-open.png);
-
-}
-
-
 /*-----QListView-----*/
 QListView 
 {
@@ -707,7 +682,6 @@ QCheckBox::indicator
 
 QCheckBox::indicator:checked
 {
-    image:url("./ressources/check.png");
 	background-color: #b78620;
     border: 1px solid #3a546e;
 
@@ -876,7 +850,6 @@ QScrollBar::sub-line:horizontal
 
 QScrollBar::right-arrow:horizontal
 {
-    image: url(://arrow-right.png);
     width: 6px;
     height: 6px;
 
@@ -885,7 +858,6 @@ QScrollBar::right-arrow:horizontal
 
 QScrollBar::left-arrow:horizontal
 {
-    image: url(://arrow-left.png);
     width: 6px;
     height: 6px;
 
@@ -942,7 +914,6 @@ QScrollBar::sub-line:vertical
 
 QScrollBar::up-arrow:vertical
 {
-    image: url(://arrow-up.png);
     width: 6px;
     height: 6px;
 
@@ -951,7 +922,6 @@ QScrollBar::up-arrow:vertical
 
 QScrollBar::down-arrow:vertical
 {
-    image: url(://arrow-down.png);
     width: 6px;
     height: 6px;
 

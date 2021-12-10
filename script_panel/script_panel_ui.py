@@ -442,7 +442,7 @@ class ScriptWidget(QtWidgets.QWidget):
         self.display_color = None
         self.icon_path = None
 
-        self.trigger_btn = QtWidgets.QPushButton(parent=self)
+        self.trigger_btn = ui_utils.ScaledContentPushButton(parent=self)
         self.trigger_btn.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
         self.trigger_btn.setText(self.script_name)
         self.trigger_btn.clicked.connect(self.activate_script)
@@ -497,6 +497,7 @@ class ScriptWidget(QtWidgets.QWidget):
 
     def set_display_label(self, text):
         self.trigger_btn.setText(text)
+        self.trigger_btn.update_content_size()
 
     def open_display_color_picker(self):
         new_color = ui_utils.open_color_picker(current_color=self.display_color,

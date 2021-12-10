@@ -292,3 +292,58 @@ def set_combo_index_via_text(cb, text):
     index = cb.findText(text, QtCore.Qt.MatchExactly)
     if index != -1:
         cb.setCurrentIndex(index)
+
+
+class ScaledContentPushButton(QtWidgets.QPushButton):
+    ###############################################################################
+    # overloads
+    def __init__(self, *args, **kwargs):
+        super(ScaledContentPushButton, self).__init__(*args, **kwargs)
+        self.max_icon_size = 0
+        self.text_padding_multiplier = 0.8
+        self.icon_padding_multiplier = 0.5
+
+    def setIcon(self, q_icon):
+        biggest_size = q_icon.availableSizes()[-1]  # type: QtCore.QSize
+        self.max_icon_size = min(biggest_size.width(), biggest_size.height())
+        super(ScaledContentPushButton, self).setIcon(q_icon)
+
+    def resizeEvent(self, event):
+        self.update_content_size()
+        super(ScaledContentPushButton, self).resizeEvent(event)
+
+    ###############################################################################
+    def update_content_size(self):
+        self.update_icon_size()
+        self.update_button_text_size()
+
+    def update_icon_size(self):
+        min_size = min(self.size().width(), self.size().height())
+        icon_size = QtCore.QSize(
+            min_size * self.icon_padding_multiplier,
+            min_size * self.icon_padding_multiplier,
+        )
+        self.setIconSize(icon_size)
+
+    def update_button_text_size(self):
+        # reset font size so .fontMetrics() make sense
+        font = QtGui.QFont('Serif', 8, QtGui.QFont.Normal)
+        self.setFont(font)
+
+        # resize text to scale with widget
+        size = self.size()
+        icon_width = 0
+        if self.icon():
+            icon_width = min(self.iconSize().width(), self.max_icon_size)
+
+        h_factor = float(size.height()) / self.fontMetrics().height()
+        w_factor = float(size.width()) / max((self.fontMetrics().width(self.text()) + icon_width), 0.0001)
+
+        # the smaller value determines max text size
+        factor = min(h_factor, w_factor) * self.text_padding_multiplier
+
+        # clamp output to a min size
+        final_point_size = max(font.pointSizeF() * factor, 8.0)
+        font.setPointSizeF(final_point_size)
+
+        self.setFont(font)
