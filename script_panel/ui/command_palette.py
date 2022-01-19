@@ -84,8 +84,8 @@ class PaletteGraphicsView(QtWidgets.QGraphicsView):
 
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.RightButton:
-            self.select_item_under_cursor()
-            super(PaletteGraphicsView, self).mousePressEvent(event)
+            if self.select_item_under_cursor():
+                super(PaletteGraphicsView, self).mousePressEvent(event)
 
         elif event.button() == QtCore.Qt.MiddleButton:
             release_event = QtGui.QMouseEvent(QtCore.QEvent.MouseButtonRelease, event.localPos(), event.screenPos(),
@@ -116,6 +116,7 @@ class PaletteGraphicsView(QtWidgets.QGraphicsView):
         if item_under_cursor:
             self.scene().clearSelection()
             item_under_cursor.setSelected(True)
+            return True
 
     def get_cursor_scene_pos(self):
         graphics_view_pos = self.mapFromGlobal(QtGui.QCursor().pos())
