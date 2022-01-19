@@ -266,16 +266,13 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         print("Command Palette - layout: '{}' saved".format(current_layout))
 
     def _get_current_layout_settings(self):
-        script_paths = []
         scripts_display_info = {}
         for script_widget in self.ui.command_palette_widget.scene_widgets:  # type: ScriptWidget
-            script_paths.append(script_widget.script_path)
             scripts_display_info[script_widget.script_path] = script_widget.get_display_info()
 
         current_palette_layout = self.ui.command_palette_widget.get_scene_layout()
 
         ui_info = dict()
-        ui_info[sps.sk.script_paths] = script_paths
         ui_info[sps.sk.scripts_display] = scripts_display_info
         ui_info[sps.sk.palette_layout] = current_palette_layout
         ui_info[sps.sk.palette_display] = self.ui.command_palette_widget.get_ui_settings()
@@ -295,15 +292,14 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.ui.command_palette_widget.clear()
         layout_info = self.settings.get_layout(layout_key)
 
-        scripts = layout_info.get(sps.sk.script_paths, list())
         scripts_display = layout_info.get(sps.sk.scripts_display, dict())
         palette_layout = layout_info.get(sps.sk.palette_layout, dict())
         palette_display = layout_info.get(sps.sk.palette_display, dict())
 
-        for script_path in scripts:
+        for script_path, display_info in scripts_display.items():
             self.add_script_to_layout(
                 script_path=script_path,
-                display_info=scripts_display.get(script_path),
+                display_info=display_info,
             )
 
         self.ui.command_palette_widget.set_ui_settings(palette_display)

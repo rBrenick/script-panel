@@ -24,7 +24,6 @@ class SettingsConstants:
 
     # layout keys
     layouts = "layouts"
-    script_paths = "script_paths"
     scripts_display = "script_display"
     palette_layout = "palette_layout"
     palette_display = "palette_display"
@@ -132,11 +131,11 @@ class ScriptPanelSettings(ui_utils.BaseSettings):
     def remove_script_from_active_layout(self, script_path):
         layout_info = self.get_layout(self.active_layout)
 
-        script_paths = layout_info.get(sk.script_paths, list())
-        if script_path in script_paths:
-            script_paths.remove(script_path)
+        scripts_display = layout_info.get(sk.scripts_display, dict())
+        if script_path in list(scripts_display.keys()):
+            scripts_display.pop(script_path)
 
-        layout_info[sk.script_paths] = script_paths
+        layout_info[sk.scripts_display] = scripts_display
         self.update_layout(self.active_layout, layout_info)
 
     ###########################################################################
@@ -146,7 +145,7 @@ class ScriptPanelSettings(ui_utils.BaseSettings):
         Convert from single favorite layout, to multiple with chooser
         """
         layout_info = dict()
-        layout_info[sk.script_paths] = self.get_value("favorites")
+        layout_info["script_paths"] = self.get_value("favorites")
         layout_info[sk.scripts_display] = self.get_value("favorites_display")
         layout_info[sk.palette_layout] = self.get_value("favorites_layout", default=dict())
         layout_info[sk.palette_display] = self.get_value("palette_display", default=dict())
