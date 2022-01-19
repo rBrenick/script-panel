@@ -153,9 +153,14 @@ class ScriptPanelWidget(QtWidgets.QWidget):
             {"Remove from favorites": self.ui.command_palette_widget.remove_selected_items},
             {"Hide Headers": self.ui.command_palette_widget.hide_headers},
             {"Show Headers": self.ui.command_palette_widget.show_headers},
-            {"Set Grid Size": self.ui.command_palette_widget.open_grid_size_setter},
-            {"Set Grid Color": self.ui.command_palette_widget.open_grid_background_color_setter},
-            {"Reset Grid": self.ui.command_palette_widget.reset_grid_display},
+            {"Grid": [
+                {"Set Grid Size": self.ui.command_palette_widget.open_grid_size_setter},
+                {"Set Grid Color": self.ui.command_palette_widget.open_grid_background_color_setter},
+                "-",
+                {"Reset Grid - Size": self.ui.command_palette_widget.reset_grid_size},
+                {"Reset Grid - Color": self.ui.command_palette_widget.reset_grid_color},
+                {"Reset Grid": self.ui.command_palette_widget.reset_grid_display},
+            ]},
         ]
 
         if selected_script_widget:
@@ -165,10 +170,10 @@ class ScriptPanelWidget(QtWidgets.QWidget):
                 {"Set Color": selected_script_widget.open_display_color_picker},
                 {"Set Icon": selected_script_widget.open_icon_browser},
                 "-",
-                {"Reset Display": selected_script_widget.reset_display},
                 {"Reset Display - Label": selected_script_widget.reset_display_label},
                 {"Reset Display - Color": selected_script_widget.reset_display_color},
                 {"Reset Display - Icon": selected_script_widget.reset_display_icon},
+                {"Reset Display": selected_script_widget.reset_display},
             ])
 
         ui_utils.build_menu_from_action_list(action_list, extra_trigger=partial(self.ui.display_layout_save_required))
@@ -287,6 +292,8 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.settings.sync()  # sync from disk
         current_layout = self.ui.palette_chooser.currentText()
         self.load_layout_settings(current_layout)
+
+        self.ui.display_layout_save_required(False)
 
     def load_layout_settings(self, layout_key=None):
         self.ui.command_palette_widget.clear()

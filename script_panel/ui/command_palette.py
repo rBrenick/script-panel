@@ -476,7 +476,13 @@ class CommandPaletteWidget(QtWidgets.QWidget):
         self.scene.setBackgroundBrush(color)
 
     def reset_grid_display(self):
+        self.reset_grid_size()
+        self.reset_grid_color()
+
+    def reset_grid_size(self):
         self.set_grid_size(lk.default_grid_size)
+
+    def reset_grid_color(self):
         self.set_grid_color(lk.default_grid_color)
 
     def get_mouse_pos(self):
