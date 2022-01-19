@@ -42,8 +42,8 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.ui = ScriptPanelUI()
         self.settings = sps.ScriptPanelSettings()
 
-        self.env_data = spu.get_env_data()  # type: spu.EnvironmentData
-        self.default_expand_depth = self.env_data.default_expand_depth
+        self.config_data = spu.ConfigurationData()
+        self.default_expand_depth = self.config_data.default_expand_depth
 
         # palette chooser
         self.ui.palette_chooser.addItems(self.settings.get_layout_names())
@@ -59,6 +59,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         # connect signals
         self.ui.search_LE.textChanged.connect(self.filter_scripts)
         self.ui.refresh_BTN.clicked.connect(self.refresh_scripts)
+        self.ui.configure_BTN.clicked.connect(self.open_config_editor)
         self.ui.script_double_clicked.connect(self.script_double_clicked)
         self.ui.script_dropped_in_layout.connect(self.add_script_to_layout)
         self.ui.palette_chooser.currentIndexChanged.connect(self._palette_chooser_index_change)
@@ -177,13 +178,17 @@ class ScriptPanelWidget(QtWidgets.QWidget):
             skyhook_enabled = self.settings.get_value(self.settings.k_skyhook_enabled, default=False)
             self.ui.skyhook_blender_CHK.setChecked(skyhook_enabled)
 
+    def config_refresh(self):
+        self.config_data = spu.ConfigurationData()
+        self.refresh_scripts()
+
     def refresh_scripts(self):
         self.model.clear()
         self.model.setHorizontalHeaderLabels(["Name"])
         self._model_folders = {}
 
         # then add normal scripts
-        for script_path, path_info in spu.get_scripts(env_data=self.env_data).items():
+        for script_path, path_info in spu.get_scripts(config_data=self.config_data).items():
             self.add_script_to_model(script_path, path_info)
 
         self.ui.scripts_TV.expandToDepth(self.default_expand_depth)
@@ -383,6 +388,10 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
         from .ui import hotkey_editor
         hotkey_editor.main(reload=True, script_path=script_path)
+
+    def open_config_editor(self):
+        from .ui import config_editor
+        config_editor.main(parent_window=self, reload=True)
 
     def open_script_in_explorer(self, script_path=None):
         if not script_path:
@@ -637,6 +646,7 @@ class ScriptPanelUI(QtWidgets.QWidget):
         self.search_LE.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.Minimum)
 
         self.refresh_BTN = QtWidgets.QPushButton("Refresh")
+        self.configure_BTN = QtWidgets.QPushButton("Config")
 
         self.palette_chooser = QtWidgets.QComboBox()
         self.save_palette_BTN = QtWidgets.QPushButton(text="Save")
@@ -666,6 +676,7 @@ class ScriptPanelUI(QtWidgets.QWidget):
         search_bar_layout = QtWidgets.QHBoxLayout()
         search_bar_layout.addWidget(self.search_LE)
         search_bar_layout.addWidget(self.refresh_BTN)
+        search_bar_layout.addWidget(self.configure_BTN)
         scripts_and_search_layout.addLayout(search_bar_layout)
         scripts_and_search_layout.addWidget(self.scripts_TV)
         scripts_and_search_layout.setSpacing(2)

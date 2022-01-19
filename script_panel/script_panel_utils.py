@@ -1,3 +1,4 @@
+import collections
 import json
 import os
 import runpy
@@ -6,6 +7,7 @@ import sys
 from collections import OrderedDict
 
 from script_panel import dcc
+from script_panel import script_panel_settings as sps
 
 dcc_interface = dcc.DCCInterface()
 
@@ -81,15 +83,65 @@ def file_triggered(file_path):
     trigger_func(file_path)
 
 
-class EnvironmentData(object):
+class ConfigurationData(object):
     """
     Handler class for environment properties
     """
 
-    def __init__(self, env_data):
-        self.raw_data = env_data
-        self.path_data = env_data.get(lk.paths, [])
-        self.default_expand_depth = env_data.get(lk.default_indent, 0)
+    def __init__(self, environment=True, user=True):
+        raw_data = collections.OrderedDict()
+
+        if environment:
+            raw_data.update(self.get_env_data())
+
+        if user:
+            user_data = self.get_user_data()
+
+            # merge in user defined path data
+            all_path_data = raw_data.get(lk.paths, [])
+            for path_data in user_data.get(lk.paths, []):
+                all_path_data.append(path_data)
+            raw_data[lk.paths] = all_path_data
+
+        self.raw_data = raw_data
+        self.path_data = raw_data.get(lk.paths, [])
+        self.default_expand_depth = raw_data.get(lk.default_indent, 0)
+
+    def get_user_data(self):
+        user_data = {}
+        if os.path.exists(sps.sk.user_config_json_path):
+            with open(sps.sk.user_config_json_path, "r") as fp:
+                user_data = json.load(fp, object_pairs_hook=collections.OrderedDict)
+
+        return user_data
+
+    def get_env_data(self):
+        """
+        find info about root paths from the environment variable
+
+        :return:
+        """
+        env_str = os.environ.get(lk.env_key, "")
+
+        # if nothing is defined, use example config
+        if not env_str:
+            env_str = os.path.join(os.path.dirname(__file__), "example_config", "example_script_panel_config.json")
+
+        # if env_str is a path to a json config, read the contents from that file
+        if env_str.endswith(".json") and os.path.exists(env_str):
+            config_path = env_str
+            with open(config_path, "r") as fp:
+                env_data = json.load(fp)
+
+            # replace "local file token" with full file path of config
+            modified_data = json.dumps(env_data).replace("__THIS_FILE__", config_path.replace("\\", "\\\\"))
+            env_data = json.loads(modified_data)
+
+        # or parse data directly from environment variable
+        else:
+            env_data = get_data_from_string(env_str)
+
+        return env_data
 
 
 def get_data_from_string(env_str):
@@ -112,35 +164,6 @@ def get_data_from_string(env_str):
     return env_data
 
 
-def get_env_data():
-    """
-    find info about root paths from the environment variable
-
-    :return:
-    """
-    env_str = os.environ.get(lk.env_key, "")
-
-    # if nothing is defined, use example config
-    if not env_str:
-        env_str = os.path.join(os.path.dirname(__file__), "example_config", "example_script_panel_config.json")
-
-    # if env_str is a path to a json config, read the contents from that file
-    if env_str.endswith(".json") and os.path.exists(env_str):
-        config_path = env_str
-        with open(config_path, "r") as fp:
-            env_data = json.load(fp)
-
-        # replace "local file token" with full file path of config
-        modified_data = json.dumps(env_data).replace("__THIS_FILE__", config_path.replace("\\", "\\\\"))
-        env_data = json.loads(modified_data)
-
-    # or parse data directly from environment variable
-    else:
-        env_data = get_data_from_string(env_str)
-
-    return EnvironmentData(env_data)
-
-
 def has_valid_script_extension(script_name):
     for ext in EXTENSION_MAP.keys():
         if script_name.endswith(ext):
@@ -148,15 +171,15 @@ def has_valid_script_extension(script_name):
     return False
 
 
-def get_scripts(env_data=None):
-    if not env_data:
-        env_data = get_env_data()  # type: EnvironmentData
+def get_scripts(config_data=None):
+    if not config_data:
+        config_data = ConfigurationData()
 
     script_paths = OrderedDict()
-    for path_data in env_data.path_data:
+    for path_data in config_data.path_data:
         root_folder = os.path.abspath(path_data.get(lk.path_root_dir))
         if not root_folder:
-            print("ROOT FOLDER NOT DEFINED: {}".format(env_data.raw_data))
+            print("ROOT FOLDER NOT DEFINED: {}".format(config_data.raw_data))
             continue
 
         root_type = path_data.get(lk.root_type)

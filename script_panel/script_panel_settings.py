@@ -30,6 +30,11 @@ class SettingsConstants:
     palette_display = "palette_display"
 
     max_backup_count = 30
+    user_config_json_path = os.path.join(
+        os.environ.get("APPDATA"),
+        "script_panel",
+        "user_config_{}.json".format(dcc_name)
+    )
 
 
 sk = SettingsConstants

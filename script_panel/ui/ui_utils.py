@@ -150,7 +150,9 @@ if active_dcc_is_maya:
 
 
     class ToolWindow(MayaQWidgetDockableMixin, CoreToolWindow):
-        def __init__(self, parent=get_app_window()):
+        def __init__(self, parent=None):
+            if parent is None:
+                parent = get_app_window()
             super(ToolWindow, self).__init__(parent=parent)
             self.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
 
