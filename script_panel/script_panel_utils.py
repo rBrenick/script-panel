@@ -185,7 +185,7 @@ def get_scripts(config_data=None):
             continue
 
         root_type = path_data.get(lk.root_type)
-        if root_type == "p4":
+        if root_type == FolderTypes.perforce:
             subprocess.Popen(["p4", "sync", root_folder + r"\..."], cwd=os.path.dirname(root_folder), shell=True)
 
         display_prefix = path_data.get(lk.folder_display_prefix)
