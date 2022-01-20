@@ -8,7 +8,6 @@ import time
 import traceback
 
 from script_panel import dcc
-from script_panel import script_panel_utils as spu
 from script_panel.ui import ui_utils
 from script_panel.ui.ui_utils import QtCore
 
@@ -123,8 +122,8 @@ class ScriptPanelSettings(ui_utils.BaseSettings):
             names.append(os.path.splitext(file_name)[0])
 
         # make sure the default layout is there
-        if spu.lk.default_layout_name not in names:
-            names.insert(0, spu.lk.default_layout_name)
+        if sk.default_layout_name not in names:
+            names.insert(0, sk.default_layout_name)
 
         return names
 
@@ -149,7 +148,7 @@ class ScriptPanelSettings(ui_utils.BaseSettings):
         layout_info[sk.scripts_display] = self.get_value("favorites_display")
         layout_info[sk.palette_layout] = self.get_value("favorites_layout", default=dict())
         layout_info[sk.palette_display] = self.get_value("palette_display", default=dict())
-        self.update_layout(spu.lk.default_layout_name, layout_info)
+        self.update_layout(sk.default_layout_name, layout_info)
         self.remove("favorites")
         self.remove("favorites_display")
         self.remove("favorites_layout")
