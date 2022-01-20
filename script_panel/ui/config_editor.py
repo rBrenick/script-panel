@@ -112,6 +112,8 @@ class ConfigEditorWindow(ui_utils.ToolWindow):
             twi.setText(1, val)
             root_twi.addChild(twi)
         tree_widget.addTopLevelItem(root_twi)
+        root_twi.setExpanded(True)
+        tree_widget.resizeColumnToContents(0)
 
     def remove_selected_paths(self):
         something_changed = False
