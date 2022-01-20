@@ -30,6 +30,7 @@ if not QtWidgets.QApplication.instance():
     stylesheets.apply_standalone_stylesheet()
 
 dcc_interface = dcc.DCCInterface()
+folder_types = spu.FolderTypes
 BACKGROUND_COLOR_FORM = "background-color:rgb({0}, {1}, {2})"
 BACKGROUND_COLOR_GREEN = BACKGROUND_COLOR_FORM.format(46, 113, 46)
 BACKGROUND_COLOR_RED = BACKGROUND_COLOR_FORM.format(161, 80, 55)
@@ -132,8 +133,8 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         script_panel_context_actions.extend([
             {"RADIO_SETTING": {"settings": self.settings,
                                "settings_key": self.settings.k_double_click_action,
-                               "choices": [spu.lk.run_script_on_click, spu.lk.edit_script_on_click],
-                               "default": spu.lk.run_script_on_click,
+                               "choices": [sps.sk.run_script_on_click, sps.sk.edit_script_on_click],
+                               "default": sps.sk.run_script_on_click,
                                }},
             "-",
             {"Show In Explorer": self.open_script_in_explorer},
@@ -355,9 +356,9 @@ class ScriptPanelWidget(QtWidgets.QWidget):
             self.ui.scripts_TV.expandAll()
 
     def script_double_clicked(self, script_path):
-        user_setting = self.settings.get_value(self.settings.k_double_click_action, spu.lk.run_script_on_click)
+        user_setting = self.settings.get_value(self.settings.k_double_click_action, sps.sk.run_script_on_click)
 
-        if user_setting == spu.lk.run_script_on_click:
+        if user_setting == sps.sk.run_script_on_click:
             self.activate_script(script_path)
         else:
             self.open_script_in_editor(script_path)
@@ -587,20 +588,20 @@ class Icons(object):
 
     def get_folder_icon_for_type(self, folder_type):
         """Get Icon for normal folders"""
-        if folder_type == "local" or folder_type == "network":
+        if folder_type == folder_types.local or folder_type == folder_types.network:
             return self.folder_icon
-        if folder_type == "p4":
+        if folder_type == folder_types.perforce:
             return self.p4_folder_icon
 
         return self.unknown_type_icon
 
     def get_root_folder_icon_for_type(self, folder_type):
         """Get Icon to display as the root folder"""
-        if folder_type == "local":
+        if folder_type == folder_types.local:
             return self.folder_icon
-        if folder_type == "network":
+        if folder_type == folder_types.network:
             return self.network_folder_icon
-        if folder_type == "p4":
+        if folder_type == folder_types.perforce:
             return self.p4_icon
 
         return self.unknown_type_icon
@@ -608,7 +609,7 @@ class Icons(object):
     def get_script_icon_for_type(self, file_name, folder_type=""):
         """get icon for the script"""
         if file_name.endswith(".py"):
-            if folder_type == "p4":
+            if folder_type == folder_types.perforce:
                 return self.p4_python_icon
             return self.python_icon
 

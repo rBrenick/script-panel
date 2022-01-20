@@ -22,6 +22,7 @@ def reload_modules():
     from script_panel import dcc as script_panel_dcc
     from script_panel.ui import hotkey_editor
     from script_panel.ui import config_editor
+    from script_panel import script_panel_settings
     from script_panel import script_panel_utils
     from script_panel import script_panel_ui
 
@@ -38,6 +39,7 @@ def reload_modules():
     reload(script_panel_dcc_base)
     reload(script_panel_dcc.dcc_module)
     reload(script_panel_dcc)
+    reload(script_panel_settings)
     reload(script_panel_utils)
     reload(script_panel_ui)
 

@@ -89,7 +89,7 @@ class ConfigEditorWindow(ui_utils.ToolWindow):
             return
         path_data = dict()
         path_data[spu.lk.path_root_dir] = folder
-        path_data[spu.lk.root_type] = "local"
+        path_data[spu.lk.root_type] = spu.FolderTypes.local
         path_data[spu.lk.folder_display_prefix] = os.path.basename(folder).title()
         self.add_path_config(
             path_data,
@@ -101,10 +101,7 @@ class ConfigEditorWindow(ui_utils.ToolWindow):
     def add_path_config(self, path_data, tree_widget, editable=False):
         root_twi = QtWidgets.QTreeWidgetItem()
 
-        if editable:
-            root_twi.setFlags(root_twi.flags() | QtWidgets.QTreeWidget.AllEditTriggers)
-
-        root_folder_name = os.path.basename(path_data.get(spu.lk.path_root_dir))
+        root_folder_name = path_data.get(spu.lk.folder_display_prefix)
         root_twi.setText(0, root_folder_name)
         for key, val in path_data.items():
             twi = QtWidgets.QTreeWidgetItem()

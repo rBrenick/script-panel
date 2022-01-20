@@ -21,6 +21,9 @@ class SettingsConstants:
     active_layout = "active_layout"
     settings_version = "settings_version"
 
+    run_script_on_click = "Run Script on Double Click"
+    edit_script_on_click = "Edit Script on Double Click"
+
     # layout keys
     layouts = "layouts"
     scripts_display = "script_display"

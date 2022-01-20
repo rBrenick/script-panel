@@ -21,23 +21,26 @@ else:
 
 
 class LocalConstants:
-    run_script_on_click = "Run Script on Double Click"
-    edit_script_on_click = "Edit Script on Double Click"
-
-    dcc_maya = "Maya"
-    dcc_blender = "Maya"
-    dcc_standalone = "Standalone"
-
     env_key = "SCRIPT_PANEL_ROOT_FOLDERS"
+
+    # config keys
+    default_indent = "default_indent"
+    paths = "paths"
+
+    # paths config keys
     path_root_dir = "root_dir"
     root_type = "root_type"
-    paths = "paths"
-    default_indent = "default_indent"
     folder_display_prefix = "folder_prefix"
 
 
+class FolderTypes:
+    local = "local"
+    perforce = "p4"
+    network = "network"
+
+
 class PathInfoKeys:
-    # keys for dicts being returned by get_scripts
+    # internal keys for data being returned by get_scripts()
     root_dir = "root"
     root_type = "root_type"
     folder_prefix = "folder_prefix"
@@ -155,7 +158,7 @@ def get_data_from_string(env_str):
         for root_folder in root_folders:
             paths.append({
                 lk.path_root_dir: root_folder,
-                lk.root_type: "local",
+                lk.root_type: FolderTypes.local,
                 lk.folder_display_prefix: os.path.basename(root_folder)
             })
         env_data[lk.paths] = paths
