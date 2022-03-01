@@ -86,7 +86,7 @@ def hookup_tab_signals(cmd_exec):
     pm.cmdScrollFieldExecuter(cmd_exec, e=True, fileChangedCommand=lambda x: pm.mel.executerTabFileChanged(x))
 
 
-def run_mel_script(script_path):
+def run_mel_script(script_path, parameters=None):
     with open(script_path, "r") as fp:
         mel_script = fp.read()
     return mel.eval(mel_script)

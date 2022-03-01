@@ -75,6 +75,9 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.ui.command_palette_widget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.ui.command_palette_widget.customContextMenuRequested.connect(self.build_palette_context_menu)
 
+        self.ui.refresh_BTN.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.ui.refresh_BTN.customContextMenuRequested.connect(self.build_refresh_context_menu)
+
         # shortcuts
         self.setup_palette_shortcuts()
 
@@ -179,6 +182,12 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
         ui_utils.build_menu_from_action_list(action_list, extra_trigger=partial(self.ui.display_layout_save_required))
 
+    def build_refresh_context_menu(self):
+        action_list = [
+            {"Config Refresh": partial(self.refresh_scripts, True)},
+        ]
+        ui_utils.build_menu_from_action_list(action_list)
+
     def load_settings(self):
         if sp_skyhook:
             skyhook_enabled = self.settings.get_value(self.settings.k_skyhook_enabled, default=False)
@@ -188,13 +197,16 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.config_data = spu.ConfigurationData()
         self.refresh_scripts()
 
-    def refresh_scripts(self):
+    def refresh_scripts(self, config_search=False):
         self.model.clear()
         self.model.setHorizontalHeaderLabels(["Name"])
         self._model_folders = {}
 
-        # then add normal scripts
-        for script_path, path_info in spu.get_scripts(config_data=self.config_data).items():
+        # search through all folders for scripts
+        for script_path, path_info in spu.get_scripts(
+                config_data=self.config_data,
+                config_search=config_search
+        ).items():
             self.add_script_to_model(script_path, path_info)
 
         self.ui.scripts_TV.expandToDepth(self.default_expand_depth)
@@ -363,7 +375,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         else:
             self.open_script_in_editor(script_path)
 
-    def activate_script(self, script_path=None):
+    def activate_script(self, script_path=None, parameters=None):
         if not script_path:
             script_path = self.get_selected_script_path()
             if not script_path:
@@ -374,7 +386,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
                 sp_skyhook.run_script_in_blender(script_path)
                 return
 
-        spu.file_triggered(script_path)
+        spu.file_triggered(script_path, parameters=parameters)
 
     def open_script_in_editor(self, script_path=None):
         if not script_path:

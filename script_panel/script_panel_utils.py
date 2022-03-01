@@ -44,13 +44,21 @@ class PathInfoKeys:
     root_dir = "root"
     root_type = "root_type"
     folder_prefix = "folder_prefix"
+    script_config = "script_config"
+
+
+class ScriptConfig:
+    description = "description"
+    parameters = "parameters"
 
 
 lk = LocalConstants
 
 
-def run_python_script(script_path):
-    runpy.run_path(script_path, init_globals=globals(), run_name="__main__")
+def run_python_script(script_path, parameters=None):
+    script_globals = globals()
+    script_globals["script_panel_params"] = parameters if parameters else {}
+    runpy.run_path(script_path, init_globals=script_globals, run_name="__main__")
 
 
 EXTENSION_MAP = {
@@ -65,7 +73,7 @@ def add_extension_func_to_map(extension, func):
     EXTENSION_MAP[extension] = func
 
 
-def undefined_extension_func(file_path):
+def undefined_extension_func(file_path, parameters=None):
     file_ext = os.path.splitext(file_path)[-1]
     print("Action needed for extension: {}".format(file_ext))
 
@@ -80,9 +88,9 @@ def get_file_triggered_func(file_path):
     return file_type_func
 
 
-def file_triggered(file_path):
+def file_triggered(file_path, parameters=None):
     trigger_func = get_file_triggered_func(file_path)
-    trigger_func(file_path)
+    trigger_func(file_path, parameters=parameters)
 
 
 class ConfigurationData(object):
@@ -173,7 +181,7 @@ def has_valid_script_extension(script_name):
     return False
 
 
-def get_scripts(config_data=None):
+def get_scripts(config_data=None, config_search=False):
     if not config_data:
         config_data = ConfigurationData()
 
@@ -196,11 +204,30 @@ def get_scripts(config_data=None):
                 full_script_path = os.path.join(folder, script_name)
                 full_script_path = full_script_path.replace("/", "\\")
 
-                script_paths[full_script_path] = {
+                script_data = {
                     PathInfoKeys.root_dir: root_folder,
                     PathInfoKeys.root_type: root_type,
                     PathInfoKeys.folder_prefix: display_prefix,
                 }
+
+                if config_search:
+
+                    # try:
+                    with open(full_script_path) as f:
+                        first_line = f.readline()
+
+                    if first_line.startswith("# script_panel_config"):
+                        config_str = first_line.lstrip("# script_panel_config: ")
+                        script_config = json.loads(config_str)
+                    else:
+                        script_config = {}
+
+                    # except Exception as e:
+                    #     print(e)
+
+                    script_data[PathInfoKeys.script_config] = script_config
+
+                script_paths[full_script_path] = script_data
 
     return script_paths
 
