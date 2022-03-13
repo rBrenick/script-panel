@@ -23,6 +23,8 @@ class SnippetPopup(QtWidgets.QWidget):
             self.ui.snippet_LW.addItem(snippet_key)
         self.ui.snippet_LW.setCurrentRow(0)
 
+        self.ui.snippet_LW.itemDoubleClicked.connect(self.insert_snippet)
+
         # connect hotkeys
         snippet_shortcut = QtWidgets.QShortcut(
             QtGui.QKeySequence("Return"),
