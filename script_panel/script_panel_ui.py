@@ -594,8 +594,9 @@ class ScriptWidget(QtWidgets.QWidget):
 
         try:
             q_icon = ui_utils.create_qicon(icon_path)
-            self.trigger_btn.setIcon(q_icon)
-            self.icon_path = icon_path
+            if q_icon:
+                self.trigger_btn.setIcon(q_icon)
+                self.icon_path = icon_path
         except Exception as e:
             logging.warning("Unable to set icon: ", e)
 
