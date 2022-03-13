@@ -679,6 +679,12 @@ class ScriptPanelUI(QtWidgets.QWidget):
         palette_buttons_layout.addWidget(self.add_palette_BTN)
         palette_buttons_layout.addWidget(self.save_palette_BTN)
         palette_buttons_layout.addWidget(self.load_palette_BTN)
+        palette_layout = QtWidgets.QVBoxLayout()
+        palette_layout.addLayout(palette_buttons_layout)
+        palette_layout.addWidget(self.command_palette_widget)
+        palette_layout.setContentsMargins(0, 0, 0, 0)
+        palette_widget = QtWidgets.QWidget()
+        palette_widget.setLayout(palette_layout)
 
         scripts_and_search_layout = QtWidgets.QVBoxLayout()
         search_bar_layout = QtWidgets.QHBoxLayout()
@@ -694,7 +700,7 @@ class ScriptPanelUI(QtWidgets.QWidget):
 
         main_splitter = QtWidgets.QSplitter()
         main_splitter.setOrientation(QtCore.Qt.Orientation.Vertical)
-        main_splitter.addWidget(self.command_palette_widget)
+        main_splitter.addWidget(palette_widget)
         main_splitter.addWidget(scripts_and_search_widget)
 
         if sp_skyhook:
@@ -704,7 +710,6 @@ class ScriptPanelUI(QtWidgets.QWidget):
             skyhook_dccs_layout.addWidget(self.skyhook_blender_CHK)
             main_layout.addLayout(skyhook_dccs_layout)
 
-        main_layout.addLayout(palette_buttons_layout)
         main_layout.addWidget(main_splitter)
         self.setLayout(main_layout)
 
