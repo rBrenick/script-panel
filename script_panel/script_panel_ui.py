@@ -283,6 +283,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         path_data = folder_model.PathData(relative_path=script_rel_path,
                                           full_path=script_path,
                                           is_folder=False,
+                                          root_type=root_type,
                                           )
         item.setData(path_data, QtCore.Qt.UserRole)
 
@@ -407,9 +408,14 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
     def open_script_in_editor(self, script_path=None):
         if not script_path:
-            script_path = self.get_selected_script_path()
+            script_data = self.get_selected_script_data(allow_folders=False)  # type: folder_model.PathData
+            script_path = script_data.full_path
             if not script_path:
                 return
+
+            # open file for edit in p4
+            if script_data.root_type == folder_types.perforce:
+                subprocess.Popen(["p4", "edit", script_path], cwd=os.path.dirname(script_path), shell=True)
 
         dcc_interface.open_script(script_path)
 
@@ -471,6 +477,12 @@ class ScriptPanelWidget(QtWidgets.QWidget):
             return
 
         return script_path
+
+    def get_selected_script_data(self, allow_folders=True):
+        selected_scripts_data = self.ui.scripts_TV.get_selected_scripts_data(allow_folders=allow_folders)
+        if not selected_scripts_data:
+            return
+        return selected_scripts_data[0]  # type: folder_model.PathData
 
 
 class ScriptWidget(QtWidgets.QWidget):
@@ -814,6 +826,23 @@ class ScriptTreeView(QtWidgets.QTreeView):
                 selected_paths.append(selected_path)
 
         return selected_paths
+
+    def get_selected_scripts_data(self, allow_folders=False):
+        proxy = self.model()  # type: QtCore.QSortFilterProxyModel
+
+        selected_data = []
+        for index in self.selectedIndexes():
+            model_index = proxy.mapToSource(index)
+            path_data = proxy.sourceModel().data(model_index, QtCore.Qt.UserRole)  # type: folder_model.PathData
+
+            # skip folders if they're not allowed
+            if allow_folders is False and path_data.is_folder:
+                path_data = None
+
+            if path_data:
+                selected_data.append(path_data)
+
+        return selected_data
 
 
 def show_warning_path_does_not_exist(file_path):

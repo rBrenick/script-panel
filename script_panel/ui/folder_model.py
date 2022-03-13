@@ -57,7 +57,8 @@ class ScriptPanelSortProxyModel(QtCore.QSortFilterProxyModel):
 
 
 class PathData(object):
-    def __init__(self, relative_path, full_path=None, is_folder=False):
+    def __init__(self, relative_path, full_path=None, is_folder=False, root_type=None):
         self.relative_path = relative_path
         self.full_path = full_path
         self.is_folder = is_folder
+        self.root_type = root_type
