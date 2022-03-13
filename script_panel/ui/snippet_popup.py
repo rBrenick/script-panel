@@ -3,10 +3,11 @@ from .ui_utils import QtCore, QtWidgets, QtGui
 
 
 class SnippetPopup(QtWidgets.QWidget):
-    def __init__(self, focus_widget, snippet_data, *args, **kwargs):
+    def __init__(self, focus_widget, snippet_data, focus_text=None, *args, **kwargs):
         super(SnippetPopup, self).__init__(parent=ui_utils.get_app_window(), *args, **kwargs)
 
         self.focus_widget = focus_widget
+        self.focus_text = focus_text
         self.snippet_data = snippet_data
 
         self.ui = SnippetPopupUI()
@@ -36,6 +37,8 @@ class SnippetPopup(QtWidgets.QWidget):
     def insert_snippet(self):
         snippet_key = self.ui.snippet_LW.selectedItems()[0].text()
         text = self.snippet_data.get(snippet_key, "UNDEFINED")
+        if self.focus_text:
+            text = text.replace("SP_SELECTED_TEXT", self.focus_text)
         write_text_in_widget(self.focus_widget, text)
         self.close()
 
@@ -57,11 +60,24 @@ def write_text_in_widget(widget, text):
         widget.insert(text)
 
 
+def is_text_widget(widget):
+    return isinstance(widget, (QtWidgets.QTextEdit, QtWidgets.QLineEdit))
+
+
+def get_selected_text(widget):
+    if isinstance(widget, QtWidgets.QTextEdit):
+        return widget.textCursor().selectedText()
+    elif isinstance(widget, QtWidgets.QLineEdit):
+        return widget.selectedText()
+
+
 def main(snippet_data=None):
     focus_widget = QtWidgets.QApplication.focusWidget()  # type: QtWidgets.QLineEdit
-    if not hasattr(focus_widget, "cursor"):
+    if not is_text_widget(focus_widget):
         return
+    focus_text = get_selected_text(focus_widget)
 
+    # example use case
     if not snippet_data:
         snippet_data = {"First Selected": "pm.selected()[0]"}
 
@@ -70,7 +86,7 @@ def main(snippet_data=None):
         write_text_in_widget(focus_widget, list(snippet_data.values())[0])
         return
 
-    popup_win = SnippetPopup(focus_widget, snippet_data)
+    popup_win = SnippetPopup(focus_widget, snippet_data, focus_text)
     popup_win.show()
 
     # move to mouse cursor location

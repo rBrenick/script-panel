@@ -231,17 +231,21 @@ class ConfigEditorWidget(QtWidgets.QWidget):
         self.env_paths_TW.setHeaderLabels(["Key", "Val"])
         self.env_paths_TW.setHeaderHidden(True)
 
+        self.snippets_label = QtWidgets.QLabel("Create snippets of code that can be accessed by Alt+Shift+S.\n\nPut SP_SELECTED_TEXT in the snippet to use the currently selected text.")
+        self.snippets_label.setTextInteractionFlags(QtCore.Qt.TextSelectableByKeyboard | QtCore.Qt.TextSelectableByMouse)
         self.add_snippet_btn = QtWidgets.QPushButton("Add Snippet")
         self.remove_snippet_btn = QtWidgets.QPushButton("Remove Snippet")
         self.remove_snippet_btn.setShortcut("DEL")
         self.snippets_TW = QtWidgets.QTreeWidget()
         self.snippets_TW.setHeaderLabels(["Display Text", "Snippet Text"])
 
+        self.user_paths_label = QtWidgets.QLabel("Define custom paths to search for scripts.")
         self.user_paths_widget = QtWidgets.QWidget()
         self.user_paths_widget.setLayout(QtWidgets.QVBoxLayout())
         self.config_buttons_layout = QtWidgets.QHBoxLayout()
         self.config_buttons_layout.addWidget(self.add_path_btn)
         self.config_buttons_layout.addWidget(self.remove_path_btn)
+        self.user_paths_widget.layout().addWidget(self.user_paths_label)
         self.user_paths_widget.layout().addLayout(self.config_buttons_layout)
         self.user_paths_widget.layout().addWidget(self.user_paths_TW)
         self.user_paths_widget.layout().setContentsMargins(0, 5, 0, 0)
@@ -251,6 +255,7 @@ class ConfigEditorWidget(QtWidgets.QWidget):
         self.snippet_buttons_layout = QtWidgets.QHBoxLayout()
         self.snippet_buttons_layout.addWidget(self.add_snippet_btn)
         self.snippet_buttons_layout.addWidget(self.remove_snippet_btn)
+        self.snippets_widget.layout().addWidget(self.snippets_label)
         self.snippets_widget.layout().addLayout(self.snippet_buttons_layout)
         self.snippets_widget.layout().addWidget(self.snippets_TW)
         self.snippets_widget.layout().setContentsMargins(0, 5, 0, 0)
@@ -269,8 +274,10 @@ class ConfigEditorWidget(QtWidgets.QWidget):
     def display_save_required(self, needs_save=True):
         if needs_save:
             self.save_config_btn.setStyleSheet(BACKGROUND_COLOR_RED)
+            self.save_config_btn.setText("Save*")
         else:
             self.save_config_btn.setStyleSheet(BACKGROUND_COLOR_GREEN)
+            self.save_config_btn.setText("Save")
 
 
 class PathListWidgetItem(QtWidgets.QTreeWidgetItem):
