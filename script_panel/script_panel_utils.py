@@ -26,6 +26,7 @@ class LocalConstants:
     # config keys
     default_indent = "default_indent"
     paths = "paths"
+    snippets = "snippets"
 
     # paths config keys
     path_root_dir = "root_dir"
@@ -95,15 +96,11 @@ class ConfigurationData(object):
         self.use_environment = environment
         self.use_user = user
 
+        self.user_snippets = {}
+
         self.refresh_config()
 
     def refresh_config(self):
-        raw_data = self.get_raw_data()
-        self.raw_data = raw_data
-        self.path_data = raw_data.get(lk.paths, [])
-        self.default_expand_depth = raw_data.get(lk.default_indent, 0)
-
-    def get_raw_data(self):
         raw_data = collections.OrderedDict()
 
         user_data = self.get_user_data()
@@ -118,7 +115,10 @@ class ConfigurationData(object):
                 all_path_data.append(path_data)
             raw_data[lk.paths] = all_path_data
 
-        return raw_data
+        self.raw_data = raw_data
+        self.path_data = raw_data.get(lk.paths, [])
+        self.default_expand_depth = raw_data.get(lk.default_indent, 0)
+        self.user_snippets = user_data.get(lk.snippets, dict())
 
     def get_user_data(self):
         user_data = {}

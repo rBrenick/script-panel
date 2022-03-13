@@ -30,6 +30,9 @@ class SettingsConstants:
     palette_layout = "palette_layout"
     palette_display = "palette_display"
 
+    # snippet keys
+    snippets = "snippets"
+
     max_backup_count = 30
     user_config_json_path = os.path.join(
         os.environ.get("APPDATA"),

@@ -12,6 +12,7 @@ from script_panel import script_panel_settings as sps
 from script_panel import script_panel_utils as spu
 from script_panel.ui import command_palette
 from script_panel.ui import folder_model
+from script_panel.ui import snippet_popup
 from script_panel.ui import ui_utils
 from script_panel.ui.ui_utils import QtCore, QtWidgets, QtGui
 
@@ -76,6 +77,8 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.ui.command_palette_widget.customContextMenuRequested.connect(self.build_palette_context_menu)
 
         # shortcuts
+        self.snippet_shortcut = None
+        self.register_snippet_shortcut()
         self.setup_palette_shortcuts()
 
         # build ui
@@ -109,6 +112,25 @@ class ScriptPanelWidget(QtWidgets.QWidget):
             self.load_current_layout,
         )
         load_layout_hotkey.setContext(QtCore.Qt.WidgetShortcut)
+
+    def register_snippet_shortcut(self):
+        # no snippets configured, just skip this
+        if not self.config_data.user_snippets:
+            return
+
+        # already register, no need to do it again
+        if self.snippet_shortcut:
+            return
+
+        snippet_shortcut = QtWidgets.QShortcut(
+            QtGui.QKeySequence("Alt+Shift+S"),
+            self,
+            self.open_snippet_popup,
+        )
+        snippet_shortcut.setContext(QtCore.Qt.ApplicationShortcut)
+        self.snippet_shortcut = snippet_shortcut
+
+        return snippet_shortcut
 
     def build_context_menu(self):
         selected_path = self.ui.scripts_TV.get_selected_script_paths(allow_folders=True)
@@ -179,6 +201,9 @@ class ScriptPanelWidget(QtWidgets.QWidget):
             ])
 
         ui_utils.build_menu_from_action_list(action_list, extra_trigger=partial(self.ui.display_layout_save_required))
+
+    def open_snippet_popup(self):
+        snippet_popup.main(snippet_data=self.config_data.user_snippets)
 
     def load_settings(self):
         if sp_skyhook:
