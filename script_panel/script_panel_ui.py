@@ -84,6 +84,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.load_settings()
 
         main_layout = QtWidgets.QVBoxLayout()
+        main_layout.setContentsMargins(2, 2, 2, 2)
         main_layout.addWidget(self.ui)
         self.setLayout(main_layout)
 
@@ -192,7 +193,6 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.model.clear()
         self.model.setHorizontalHeaderLabels(["Name"])
         self._model_folders = {}
-
 
         # then add normal scripts
         for script_path, path_info in spu.get_scripts(config_data=self.config_data).items():
