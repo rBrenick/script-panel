@@ -218,6 +218,7 @@ class ConfigEditorWidget(QtWidgets.QWidget):
 
         self.save_config_btn = QtWidgets.QPushButton("Save")
         self.save_config_btn.setShortcut("Ctrl+S")
+        self.save_config_btn.setMinimumHeight(40)
 
         self.add_path_btn = QtWidgets.QPushButton("Add Path")
         self.remove_path_btn = QtWidgets.QPushButton("Remove Path")
@@ -266,8 +267,8 @@ class ConfigEditorWidget(QtWidgets.QWidget):
         self.tab_widget.addTab(self.snippets_widget, "Snippets")
 
         self.config_layout = QtWidgets.QVBoxLayout()
-        self.config_layout.addWidget(self.save_config_btn)
         self.config_layout.addWidget(self.tab_widget)
+        self.config_layout.addWidget(self.save_config_btn)
         self.main_layout.addLayout(self.config_layout)
         self.setLayout(self.main_layout)
 
