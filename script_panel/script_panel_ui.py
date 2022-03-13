@@ -687,6 +687,7 @@ class ScriptPanelUI(QtWidgets.QWidget):
         palette_layout.addLayout(palette_buttons_layout)
         palette_layout.addWidget(self.command_palette_widget)
         palette_layout.setContentsMargins(0, 0, 0, 0)
+        palette_layout.setSpacing(2)
         palette_widget = QtWidgets.QWidget()
         palette_widget.setLayout(palette_layout)
 
