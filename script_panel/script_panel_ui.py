@@ -653,8 +653,12 @@ class ScriptPanelUI(QtWidgets.QWidget):
         self.search_LE.setPlaceholderText("Search...")
         self.search_LE.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.Minimum)
 
-        self.refresh_BTN = QtWidgets.QPushButton("Refresh")
-        self.configure_BTN = QtWidgets.QPushButton("Config")
+        self.refresh_BTN = QtWidgets.QPushButton()
+        self.refresh_BTN.setIcon(ui_utils.create_qicon("refresh_icon"))
+        self.refresh_BTN.setToolTip("Refresh script(s) folder(s)")
+        self.configure_BTN = QtWidgets.QPushButton()
+        self.configure_BTN.setIcon(ui_utils.create_qicon("settings_icon"))
+        self.configure_BTN.setToolTip("Configure Script Panel")
 
         self.palette_chooser = QtWidgets.QComboBox()
         self.save_palette_BTN = QtWidgets.QPushButton(text="Save")
