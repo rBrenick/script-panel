@@ -14,7 +14,8 @@
     {
       "root_dir": "C:\\Users\\Richa\\Perforce\\LocalWorkspace",
       "root_type": "p4",
-      "folder_prefix": "AVersionControlledFolder"
+      "folder_prefix": "AVersionControlledFolder",
+      "P4_ENABLED": false
     }
   ]
 }

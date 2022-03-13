@@ -35,6 +35,8 @@ class ConfigEditorWindow(ui_utils.ToolWindow):
         self.setCentralWidget(self.ui)
 
         # load settings
+        self.settings = sps.ScriptPanelSettings()
+
         self.env_config_data = spu.ConfigurationData(environment=True, user=False)
         self.user_config_data = spu.ConfigurationData(environment=False, user=True)
         for path_data in self.env_config_data.path_data:
@@ -78,7 +80,12 @@ class ConfigEditorWindow(ui_utils.ToolWindow):
             item = self.ui.user_paths_TW.topLevelItem(i)  # type: QtWidgets.QTreeWidgetItem
             path_data = dict()
             for child_item in [item.child(_) for _ in range(item.childCount())]:
-                path_data[child_item.text(0)] = child_item.text(1)
+                value_type = child_item.text(2)
+                if value_type == "bool":
+                    item_val = child_item.text(1).lower() == "true"
+                else:
+                    item_val = child_item.text(1)
+                path_data[child_item.text(0)] = item_val
             user_path_data.append(path_data)
 
         return user_path_data
@@ -109,7 +116,8 @@ class ConfigEditorWindow(ui_utils.ToolWindow):
                 twi.setFlags(twi.flags() | QtWidgets.QTreeWidget.AllEditTriggers)
 
             twi.setText(0, key)
-            twi.setText(1, val)
+            twi.setText(1, str(val))
+            twi.setText(2, str(type(val)))
             root_twi.addChild(twi)
         tree_widget.addTopLevelItem(root_twi)
         root_twi.setExpanded(True)

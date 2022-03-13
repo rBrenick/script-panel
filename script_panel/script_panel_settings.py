@@ -147,8 +147,8 @@ class ScriptPanelSettings(ui_utils.BaseSettings):
         Convert from single favorite layout, to multiple with chooser
         """
         layout_info = dict()
-        layout_info["script_paths"] = self.get_value("favorites")
-        layout_info[sk.scripts_display] = self.get_value("favorites_display")
+        layout_info["script_paths"] = self.get_value("favorites", default=dict())
+        layout_info[sk.scripts_display] = self.get_value("favorites_display", default=dict())
         layout_info[sk.palette_layout] = self.get_value("favorites_layout", default=dict())
         layout_info[sk.palette_display] = self.get_value("palette_display", default=dict())
         self.update_layout(sk.default_layout_name, layout_info)

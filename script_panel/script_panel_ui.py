@@ -185,13 +185,14 @@ class ScriptPanelWidget(QtWidgets.QWidget):
             self.ui.skyhook_blender_CHK.setChecked(skyhook_enabled)
 
     def config_refresh(self):
-        self.config_data = spu.ConfigurationData()
+        self.config_data.refresh_config()
         self.refresh_scripts()
 
     def refresh_scripts(self):
         self.model.clear()
         self.model.setHorizontalHeaderLabels(["Name"])
         self._model_folders = {}
+
 
         # then add normal scripts
         for script_path, path_info in spu.get_scripts(config_data=self.config_data).items():
@@ -300,9 +301,12 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.ui.command_palette_widget.clear()
         layout_info = self.settings.get_layout(layout_key)
 
-        scripts_display = layout_info.get(sps.sk.scripts_display, dict())
+        scripts_display = layout_info.get(sps.sk.scripts_display)
         palette_layout = layout_info.get(sps.sk.palette_layout, dict())
         palette_display = layout_info.get(sps.sk.palette_display, dict())
+
+        if not scripts_display:
+            scripts_display = dict()
 
         for script_path, display_info in scripts_display.items():
             self.add_script_to_layout(
