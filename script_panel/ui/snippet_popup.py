@@ -56,18 +56,18 @@ class SnippetPopupUI(QtWidgets.QWidget):
 
 
 def write_text_in_widget(widget, text):
-    if isinstance(widget, QtWidgets.QTextEdit):
+    if isinstance(widget, (QtWidgets.QTextEdit, QtWidgets.QPlainTextEdit)):
         widget.insertPlainText(text)
     elif isinstance(widget, QtWidgets.QLineEdit):
         widget.insert(text)
 
 
 def is_text_widget(widget):
-    return isinstance(widget, (QtWidgets.QTextEdit, QtWidgets.QLineEdit))
+    return isinstance(widget, (QtWidgets.QTextEdit, QtWidgets.QPlainTextEdit, QtWidgets.QLineEdit))
 
 
 def get_selected_text(widget):
-    if isinstance(widget, QtWidgets.QTextEdit):
+    if isinstance(widget, (QtWidgets.QTextEdit, QtWidgets.QPlainTextEdit)):
         return widget.textCursor().selectedText()
     elif isinstance(widget, QtWidgets.QLineEdit):
         return widget.selectedText()

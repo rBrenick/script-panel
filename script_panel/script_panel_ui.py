@@ -118,19 +118,18 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         if not self.config_data.user_snippets:
             return
 
-        # already register, no need to do it again
+        # already registered, no need to do it again
         if self.snippet_shortcut:
             return
 
         snippet_shortcut = QtWidgets.QShortcut(
             QtGui.QKeySequence("Alt+Shift+S"),
-            self,
+            ui_utils.get_app_window(),
             self.open_snippet_popup,
         )
         snippet_shortcut.setContext(QtCore.Qt.ApplicationShortcut)
-        self.snippet_shortcut = snippet_shortcut
 
-        return snippet_shortcut
+        self.snippet_shortcut = snippet_shortcut
 
     def build_context_menu(self):
         selected_path = self.ui.scripts_TV.get_selected_script_paths(allow_folders=True)
