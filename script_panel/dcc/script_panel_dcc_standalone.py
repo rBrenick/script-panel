@@ -18,4 +18,4 @@ def open_script(script_path):
         editor_path = notepad_plus_path
     else:
         editor_path = r"C:\Windows\System32\notepad.exe"
-    subprocess.call([editor_path, script_path])
+    subprocess.Popen([editor_path, script_path])

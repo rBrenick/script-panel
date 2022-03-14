@@ -22,6 +22,7 @@ def reload_modules():
     from script_panel import dcc as script_panel_dcc
     from script_panel.ui import hotkey_editor
     from script_panel.ui import config_editor
+    from script_panel.ui import snippet_popup
     from script_panel import script_panel_settings
     from script_panel import script_panel_utils
     from script_panel import script_panel_ui

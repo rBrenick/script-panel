@@ -12,6 +12,7 @@ from script_panel import script_panel_settings as sps
 from script_panel import script_panel_utils as spu
 from script_panel.ui import command_palette
 from script_panel.ui import folder_model
+from script_panel.ui import snippet_popup
 from script_panel.ui import ui_utils
 from script_panel.ui.ui_utils import QtCore, QtWidgets, QtGui
 
@@ -76,6 +77,8 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.ui.command_palette_widget.customContextMenuRequested.connect(self.build_palette_context_menu)
 
         # shortcuts
+        self.snippet_shortcut = None
+        self.register_snippet_shortcut()
         self.setup_palette_shortcuts()
 
         # build ui
@@ -84,6 +87,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.load_settings()
 
         main_layout = QtWidgets.QVBoxLayout()
+        main_layout.setContentsMargins(2, 2, 2, 2)
         main_layout.addWidget(self.ui)
         self.setLayout(main_layout)
 
@@ -108,6 +112,24 @@ class ScriptPanelWidget(QtWidgets.QWidget):
             self.load_current_layout,
         )
         load_layout_hotkey.setContext(QtCore.Qt.WidgetShortcut)
+
+    def register_snippet_shortcut(self):
+        # no snippets configured, just skip this
+        if not self.config_data.user_snippets:
+            return
+
+        # already registered, no need to do it again
+        if self.snippet_shortcut:
+            return
+
+        snippet_shortcut = QtWidgets.QShortcut(
+            QtGui.QKeySequence("Alt+Shift+S"),
+            ui_utils.get_app_window(),
+            self.open_snippet_popup,
+        )
+        snippet_shortcut.setContext(QtCore.Qt.ApplicationShortcut)
+
+        self.snippet_shortcut = snippet_shortcut
 
     def build_context_menu(self):
         selected_path = self.ui.scripts_TV.get_selected_script_paths(allow_folders=True)
@@ -179,13 +201,16 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
         ui_utils.build_menu_from_action_list(action_list, extra_trigger=partial(self.ui.display_layout_save_required))
 
+    def open_snippet_popup(self):
+        snippet_popup.main(snippet_data=self.config_data.user_snippets)
+
     def load_settings(self):
         if sp_skyhook:
             skyhook_enabled = self.settings.get_value(self.settings.k_skyhook_enabled, default=False)
             self.ui.skyhook_blender_CHK.setChecked(skyhook_enabled)
 
     def config_refresh(self):
-        self.config_data = spu.ConfigurationData()
+        self.config_data.refresh_config()
         self.refresh_scripts()
 
     def refresh_scripts(self):
@@ -257,6 +282,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         path_data = folder_model.PathData(relative_path=script_rel_path,
                                           full_path=script_path,
                                           is_folder=False,
+                                          root_type=root_type,
                                           )
         item.setData(path_data, QtCore.Qt.UserRole)
 
@@ -300,9 +326,12 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.ui.command_palette_widget.clear()
         layout_info = self.settings.get_layout(layout_key)
 
-        scripts_display = layout_info.get(sps.sk.scripts_display, dict())
+        scripts_display = layout_info.get(sps.sk.scripts_display)
         palette_layout = layout_info.get(sps.sk.palette_layout, dict())
         palette_display = layout_info.get(sps.sk.palette_display, dict())
+
+        if not scripts_display:
+            scripts_display = dict()
 
         for script_path, display_info in scripts_display.items():
             self.add_script_to_layout(
@@ -378,9 +407,14 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
     def open_script_in_editor(self, script_path=None):
         if not script_path:
-            script_path = self.get_selected_script_path()
+            script_data = self.get_selected_script_data(allow_folders=False)  # type: folder_model.PathData
+            script_path = script_data.full_path
             if not script_path:
                 return
+
+            # open file for edit in p4
+            if script_data.root_type == folder_types.perforce:
+                subprocess.Popen(["p4", "edit", script_path], cwd=os.path.dirname(script_path), shell=True)
 
         dcc_interface.open_script(script_path)
 
@@ -442,6 +476,12 @@ class ScriptPanelWidget(QtWidgets.QWidget):
             return
 
         return script_path
+
+    def get_selected_script_data(self, allow_folders=True):
+        selected_scripts_data = self.ui.scripts_TV.get_selected_scripts_data(allow_folders=allow_folders)
+        if not selected_scripts_data:
+            return
+        return selected_scripts_data[0]  # type: folder_model.PathData
 
 
 class ScriptWidget(QtWidgets.QWidget):
@@ -553,8 +593,9 @@ class ScriptWidget(QtWidgets.QWidget):
 
         try:
             q_icon = ui_utils.create_qicon(icon_path)
-            self.trigger_btn.setIcon(q_icon)
-            self.icon_path = icon_path
+            if q_icon:
+                self.trigger_btn.setIcon(q_icon)
+                self.icon_path = icon_path
         except Exception as e:
             logging.warning("Unable to set icon: ", e)
 
@@ -649,8 +690,12 @@ class ScriptPanelUI(QtWidgets.QWidget):
         self.search_LE.setPlaceholderText("Search...")
         self.search_LE.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.Minimum)
 
-        self.refresh_BTN = QtWidgets.QPushButton("Refresh")
-        self.configure_BTN = QtWidgets.QPushButton("Config")
+        self.refresh_BTN = QtWidgets.QPushButton()
+        self.refresh_BTN.setIcon(ui_utils.create_qicon("refresh_icon"))
+        self.refresh_BTN.setToolTip("Refresh script(s) folder(s)")
+        self.configure_BTN = QtWidgets.QPushButton()
+        self.configure_BTN.setIcon(ui_utils.create_qicon("settings_icon"))
+        self.configure_BTN.setToolTip("Configure Script Panel")
 
         self.palette_chooser = QtWidgets.QComboBox()
         self.save_palette_BTN = QtWidgets.QPushButton(text="Save")
@@ -675,6 +720,13 @@ class ScriptPanelUI(QtWidgets.QWidget):
         palette_buttons_layout.addWidget(self.add_palette_BTN)
         palette_buttons_layout.addWidget(self.save_palette_BTN)
         palette_buttons_layout.addWidget(self.load_palette_BTN)
+        palette_layout = QtWidgets.QVBoxLayout()
+        palette_layout.addLayout(palette_buttons_layout)
+        palette_layout.addWidget(self.command_palette_widget)
+        palette_layout.setContentsMargins(0, 0, 0, 0)
+        palette_layout.setSpacing(2)
+        palette_widget = QtWidgets.QWidget()
+        palette_widget.setLayout(palette_layout)
 
         scripts_and_search_layout = QtWidgets.QVBoxLayout()
         search_bar_layout = QtWidgets.QHBoxLayout()
@@ -690,7 +742,7 @@ class ScriptPanelUI(QtWidgets.QWidget):
 
         main_splitter = QtWidgets.QSplitter()
         main_splitter.setOrientation(QtCore.Qt.Orientation.Vertical)
-        main_splitter.addWidget(self.command_palette_widget)
+        main_splitter.addWidget(palette_widget)
         main_splitter.addWidget(scripts_and_search_widget)
 
         if sp_skyhook:
@@ -700,7 +752,6 @@ class ScriptPanelUI(QtWidgets.QWidget):
             skyhook_dccs_layout.addWidget(self.skyhook_blender_CHK)
             main_layout.addLayout(skyhook_dccs_layout)
 
-        main_layout.addLayout(palette_buttons_layout)
         main_layout.addWidget(main_splitter)
         self.setLayout(main_layout)
 
@@ -775,6 +826,23 @@ class ScriptTreeView(QtWidgets.QTreeView):
                 selected_paths.append(selected_path)
 
         return selected_paths
+
+    def get_selected_scripts_data(self, allow_folders=False):
+        proxy = self.model()  # type: QtCore.QSortFilterProxyModel
+
+        selected_data = []
+        for index in self.selectedIndexes():
+            model_index = proxy.mapToSource(index)
+            path_data = proxy.sourceModel().data(model_index, QtCore.Qt.UserRole)  # type: folder_model.PathData
+
+            # skip folders if they're not allowed
+            if allow_folders is False and path_data.is_folder:
+                path_data = None
+
+            if path_data:
+                selected_data.append(path_data)
+
+        return selected_data
 
 
 def show_warning_path_does_not_exist(file_path):

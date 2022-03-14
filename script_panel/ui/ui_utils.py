@@ -96,8 +96,8 @@ def create_qicon(icon_path):
     icon_path = icon_path.replace("\\", "/")
     if "/" not in icon_path:
         icon_path = os.path.join(ICON_FOLDER, icon_path + ".png")  # find in icons folder if not full path
-        if not os.path.exists(icon_path):
-            return
+    if not os.path.exists(icon_path):
+        return
 
     return QtGui.QIcon(icon_path)
 

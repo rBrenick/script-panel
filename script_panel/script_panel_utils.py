@@ -26,11 +26,13 @@ class LocalConstants:
     # config keys
     default_indent = "default_indent"
     paths = "paths"
+    snippets = "snippets"
 
     # paths config keys
     path_root_dir = "root_dir"
     root_type = "root_type"
     folder_display_prefix = "folder_prefix"
+    p4_enabled = "P4_ENABLED"
 
 
 class FolderTypes:
@@ -91,14 +93,22 @@ class ConfigurationData(object):
     """
 
     def __init__(self, environment=True, user=True):
+        self.use_environment = environment
+        self.use_user = user
+
+        self.user_snippets = {}
+
+        self.refresh_config()
+
+    def refresh_config(self):
         raw_data = collections.OrderedDict()
 
-        if environment:
-            raw_data.update(self.get_env_data())
+        user_data = self.get_user_data()
 
-        if user:
-            user_data = self.get_user_data()
+        if self.use_environment:
+            raw_data.update(self.get_env_data(user_data_exists=any(user_data.get(lk.paths, list()))))
 
+        if self.use_user:
             # merge in user defined path data
             all_path_data = raw_data.get(lk.paths, [])
             for path_data in user_data.get(lk.paths, []):
@@ -108,6 +118,7 @@ class ConfigurationData(object):
         self.raw_data = raw_data
         self.path_data = raw_data.get(lk.paths, [])
         self.default_expand_depth = raw_data.get(lk.default_indent, 0)
+        self.user_snippets = user_data.get(lk.snippets, dict())
 
     def get_user_data(self):
         user_data = {}
@@ -117,7 +128,7 @@ class ConfigurationData(object):
 
         return user_data
 
-    def get_env_data(self):
+    def get_env_data(self, user_data_exists=False):
         """
         find info about root paths from the environment variable
 
@@ -127,6 +138,9 @@ class ConfigurationData(object):
 
         # if nothing is defined, use example config
         if not env_str:
+            # unless user paths have been defined, then just skip everything here
+            if user_data_exists:
+                return {}
             env_str = os.path.join(os.path.dirname(__file__), "example_config", "example_script_panel_config.json")
 
         # if env_str is a path to a json config, read the contents from that file
@@ -185,7 +199,7 @@ def get_scripts(config_data=None):
             continue
 
         root_type = path_data.get(lk.root_type)
-        if root_type == FolderTypes.perforce:
+        if root_type == FolderTypes.perforce and path_data.get(lk.p4_enabled, True):
             subprocess.Popen(["p4", "sync", root_folder + r"\..."], cwd=os.path.dirname(root_folder), shell=True)
 
         display_prefix = path_data.get(lk.folder_display_prefix)
