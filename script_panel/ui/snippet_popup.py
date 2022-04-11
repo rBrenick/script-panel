@@ -75,6 +75,16 @@ def get_selected_text(widget):
 
 def main(snippet_data=None):
     focus_widget = QtWidgets.QApplication.focusWidget()  # type: QtWidgets.QLineEdit
+
+    # if you have auto-complete in focus, exit out of that
+    # if isinstance(focus_widget, QtWidgets.QListWidget):
+    #     QtWidgets.QApplication.instance().postEvent(
+    #         focus_widget,
+    #         QtGui.QKeyEvent(QtCore.QEvent.KeyPress, QtCore.Qt.Key_Escape, QtCore.Qt.NoModifier),
+    #     )
+    #
+    #     focus_widget = QtWidgets.QApplication.focusWidget()  # type: QtWidgets.QLineEdit
+
     if not is_text_widget(focus_widget):
         return
     focus_text = get_selected_text(focus_widget)

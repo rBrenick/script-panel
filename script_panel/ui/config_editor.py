@@ -64,13 +64,17 @@ class ConfigEditorWindow(ui_utils.ToolWindow):
         self.ui.save_config_btn.clicked.connect(self.save_user_config)
         self.ui.add_snippet_btn.clicked.connect(self.add_snippet)
         self.ui.remove_snippet_btn.clicked.connect(self.remove_selected_snippets)
+        self.ui.snippet_shortcut_LE.textChanged.connect(self.ui.set_snippet_label_text)
 
         self.ui.display_save_required(False)
 
     def save_user_config(self):
+        snippet_key = self.ui.snippet_shortcut_LE.text() if self.ui.snippet_shortcut_LE.text() else None
+
         user_config_data = collections.OrderedDict()
         user_config_data[spu.lk.paths] = self.get_user_config_paths_from_ui()
         user_config_data[spu.lk.snippets] = self.get_snippets_from_ui()
+        user_config_data[spu.lk.snippet_shortcut] = snippet_key
         with open(sps.sk.user_config_json_path, "w") as fp:
             json.dump(user_config_data, fp, indent=2)
 
@@ -232,8 +236,11 @@ class ConfigEditorWidget(QtWidgets.QWidget):
         self.env_paths_TW.setHeaderLabels(["Key", "Val"])
         self.env_paths_TW.setHeaderHidden(True)
 
-        self.snippets_label = QtWidgets.QLabel("Create snippets of code that can be accessed by Alt+Shift+S.\n\nPut SP_SELECTED_TEXT in the snippet to use the currently selected text.")
+        self.snippets_label = QtWidgets.QLabel()
+        self.set_snippet_label_text(spu.lk.default_snippet_shortcut)
         self.snippets_label.setTextInteractionFlags(QtCore.Qt.TextSelectableByKeyboard | QtCore.Qt.TextSelectableByMouse)
+        self.snippet_shortcut_LE = QtWidgets.QLineEdit()
+        self.snippet_shortcut_LE.setPlaceholderText("Snippet Shortcut: default ({})".format(spu.lk.default_snippet_shortcut))
         self.add_snippet_btn = QtWidgets.QPushButton("Add Snippet")
         self.remove_snippet_btn = QtWidgets.QPushButton("Remove Snippet")
         self.remove_snippet_btn.setShortcut("DEL")
@@ -259,6 +266,7 @@ class ConfigEditorWidget(QtWidgets.QWidget):
         self.snippets_widget.layout().addWidget(self.snippets_label)
         self.snippets_widget.layout().addLayout(self.snippet_buttons_layout)
         self.snippets_widget.layout().addWidget(self.snippets_TW)
+        self.snippets_widget.layout().addWidget(self.snippet_shortcut_LE)
         self.snippets_widget.layout().setContentsMargins(0, 5, 0, 0)
 
         self.tab_widget = QtWidgets.QTabWidget()
@@ -271,6 +279,12 @@ class ConfigEditorWidget(QtWidgets.QWidget):
         self.config_layout.addWidget(self.save_config_btn)
         self.main_layout.addLayout(self.config_layout)
         self.setLayout(self.main_layout)
+
+    def set_snippet_label_text(self, key=None):
+        if not key:
+            key = spu.lk.default_snippet_shortcut
+        text = "Create snippets of code that can be accessed by {}.\n\nPut SP_SELECTED_TEXT in the snippet to use the currently selected text.".format(key)
+        self.snippets_label.setText(text)
 
     def display_save_required(self, needs_save=True):
         if needs_save:

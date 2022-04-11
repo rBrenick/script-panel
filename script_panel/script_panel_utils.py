@@ -27,6 +27,8 @@ class LocalConstants:
     default_indent = "default_indent"
     paths = "paths"
     snippets = "snippets"
+    snippet_shortcut = "snippet_shortcut"
+    default_snippet_shortcut = "F9"
 
     # paths config keys
     path_root_dir = "root_dir"
