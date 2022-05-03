@@ -194,6 +194,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
                 {"Set Color": selected_script_widget.open_display_color_picker},
                 {"Set Icon": selected_script_widget.open_icon_browser},
                 {"Set Icon - via DCC": selected_script_widget.open_dcc_icon_browser},
+                {"Set Icon - Clear": selected_script_widget.clear_icon},
                 "-",
                 {"Reset Display - Label": selected_script_widget.reset_display_label},
                 {"Reset Display - Color": selected_script_widget.reset_display_color},
@@ -592,7 +593,15 @@ class ScriptWidget(QtWidgets.QWidget):
         if dcc_icon:
             self.set_icon_from_path(dcc_icon)
 
+    def clear_icon(self):
+        self.set_icon_from_path("EMPTY")
+
     def set_icon_from_path(self, icon_path):
+        if icon_path == "EMPTY":
+            self.icon_path = icon_path
+            self.trigger_btn.setIcon(QtGui.QIcon())
+            return
+
         if not icon_path:
             self.icon_path = icon_path
             self.trigger_btn.setIcon(self.default_icon)
