@@ -95,7 +95,10 @@ def load_ui_file(ui_file_name):
 def create_qicon(icon_path):
     icon_path = icon_path.replace("\\", "/")
     if icon_path.startswith(":"):
-        return QtGui.QIcon(icon_path)
+        if icon_path.endswith(".svg"):
+            return QtGui.QIcon(QtGui.QPixmap(icon_path))
+        else:
+            return QtGui.QIcon(icon_path)
 
     if "/" not in icon_path:
         icon_path = os.path.join(ICON_FOLDER, icon_path + ".png")  # find in icons folder if not full path
@@ -310,8 +313,10 @@ class ScaledContentPushButton(QtWidgets.QPushButton):
         self.icon_padding_multiplier = 0.5
 
     def setIcon(self, q_icon):
-        biggest_size = q_icon.availableSizes()[-1]  # type: QtCore.QSize
-        self.max_icon_size = min(biggest_size.width(), biggest_size.height())
+        biggest_sizes = q_icon.availableSizes()
+        if biggest_sizes:
+            biggest_size = biggest_sizes[-1]  # type: QtCore.QSize
+            self.max_icon_size = min(biggest_size.width(), biggest_size.height())
         super(ScaledContentPushButton, self).setIcon(q_icon)
 
     def resizeEvent(self, event):
