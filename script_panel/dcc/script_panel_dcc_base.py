@@ -17,3 +17,6 @@ class BaseInterface(object):
     def get_dcc_extension_map():
         return dict()
 
+    @staticmethod
+    def get_dcc_icon_from_browser():
+        return ""

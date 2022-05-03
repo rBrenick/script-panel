@@ -94,8 +94,12 @@ def load_ui_file(ui_file_name):
 
 def create_qicon(icon_path):
     icon_path = icon_path.replace("\\", "/")
+    if icon_path.startswith(":"):
+        return QtGui.QIcon(icon_path)
+
     if "/" not in icon_path:
         icon_path = os.path.join(ICON_FOLDER, icon_path + ".png")  # find in icons folder if not full path
+
     if not os.path.exists(icon_path):
         return
 

@@ -193,6 +193,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
                 {"Set Label": selected_script_widget.open_label_editor},
                 {"Set Color": selected_script_widget.open_display_color_picker},
                 {"Set Icon": selected_script_widget.open_icon_browser},
+                {"Set Icon - via DCC": selected_script_widget.open_dcc_icon_browser},
                 "-",
                 {"Reset Display - Label": selected_script_widget.reset_display_label},
                 {"Reset Display - Color": selected_script_widget.reset_display_color},
@@ -585,6 +586,11 @@ class ScriptWidget(QtWidgets.QWidget):
         )
         if selected_file:
             self.set_icon_from_path(selected_file)
+
+    def open_dcc_icon_browser(self):
+        dcc_icon = dcc_interface.get_dcc_icon_from_browser()
+        if dcc_icon:
+            self.set_icon_from_path(dcc_icon)
 
     def set_icon_from_path(self, icon_path):
         if not icon_path:

@@ -29,6 +29,13 @@ class MayaInterface(script_panel_dcc_base.BaseInterface):
     def add_to_shelf(*args, **kwargs):
         return add_script_to_maya_shelf(*args, **kwargs)
 
+    @staticmethod
+    def get_dcc_icon_from_browser():
+        import maya.app.general.resourceBrowser
+        icon_name = maya.app.general.resourceBrowser.resourceBrowser().run()
+        if icon_name:
+            return ":{}".format(icon_name)
+
 
 def open_script(script_path):
     """
