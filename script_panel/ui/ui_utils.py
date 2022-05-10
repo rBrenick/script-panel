@@ -329,11 +329,15 @@ class ScaledContentPushButton(QtWidgets.QPushButton):
         self.update_button_text_size()
 
     def update_icon_size(self):
-        min_size = min(self.size().width(), self.size().height())
-        icon_size = QtCore.QSize(
-            min_size * self.icon_padding_multiplier,
-            min_size * self.icon_padding_multiplier,
-        )
+        if self.text():
+            min_size = min(self.size().width(), self.size().height())
+            icon_size = QtCore.QSize(
+                min_size * self.icon_padding_multiplier,
+                min_size * self.icon_padding_multiplier,
+            )
+        else:
+            icon_size = self.size()
+
         self.setIconSize(icon_size)
 
     def update_button_text_size(self):

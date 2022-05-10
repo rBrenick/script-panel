@@ -502,6 +502,7 @@ class ScriptWidget(QtWidgets.QWidget):
         self.trigger_btn.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
         self.trigger_btn.setText(self.script_name)
         self.trigger_btn.clicked.connect(self.activate_script)
+        self.trigger_btn.setToolTip(self.script_name)
 
         self.default_icon = icons.get_script_icon_for_type(script_path)
         self.trigger_btn.setIcon(self.default_icon)
