@@ -36,6 +36,18 @@ class MayaInterface(script_panel_dcc_base.BaseInterface):
         if icon_name:
             return ":{}".format(icon_name)
 
+    @staticmethod
+    def get_default_snippets():
+        snippet_data = {
+            "pm.selected()[0]": "pm.selected()[0]",
+            "MakeDirs": "if not os.path.exists(os.path.dirname(SP_SELECTED_TEXT)):\n    os.makedirs(os.path.dirname(SP_SELECTED_TEXT))",
+            "PyNode": "pm.PyNode(SP_SELECTED_TEXT)",
+            "Copy Matrix": "SP_SELECTED_TEXT.setMatrix(NODE_B.getMatrix(worldSpace=True), worldSpace=True)",
+            "name == __main__": "if __name__ == \"__main__\":\n    ",
+            "File Base Name": "os.path.splitext(os.path.basename(SP_SELECTED_TEXT))[0]"
+        }
+        return snippet_data
+
 
 def open_script(script_path):
     """

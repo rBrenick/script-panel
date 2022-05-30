@@ -20,3 +20,7 @@ class BaseInterface(object):
     @staticmethod
     def get_dcc_icon_from_browser():
         return ""
+
+    @staticmethod
+    def get_default_snippets():
+        return dict()

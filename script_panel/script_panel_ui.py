@@ -114,10 +114,6 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         load_layout_hotkey.setContext(QtCore.Qt.WidgetShortcut)
 
     def register_snippet_shortcut(self):
-        # no snippets configured, just skip this
-        if not self.config_data.user_snippets:
-            return
-
         # already registered, no need to do it again
         if self.snippet_shortcut:
             return
@@ -205,7 +201,9 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         ui_utils.build_menu_from_action_list(action_list, extra_trigger=partial(self.ui.display_layout_save_required))
 
     def open_snippet_popup(self):
-        snippet_popup.main(snippet_data=self.config_data.user_snippets)
+        snippet_data = self.config_data.user_snippets.copy()
+        snippet_data.update(dcc_interface.get_default_snippets())
+        snippet_popup.main(snippet_data=snippet_data)
 
     def load_settings(self):
         if sp_skyhook:
