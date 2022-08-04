@@ -272,6 +272,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
                 folder_path_data = folder_model.PathData(relative_path=token_rel_real_path,
                                                          full_path=token_full_path,
                                                          is_folder=True,
+                                                         root_type=root_type,
                                                          )
                 new_folder_item.setData(folder_path_data, QtCore.Qt.UserRole)
 
@@ -454,7 +455,9 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         if "." not in script_name:
             script_name = "{}.py".format(script_name)
 
-        folder_path = self.get_selected_script_path()
+        folder_data = self.get_selected_script_data(allow_folders=True)
+        folder_path = folder_data.full_path
+
         script_path = os.path.join(folder_path, script_name)
         if os.path.exists(script_path):
             logging.warning("File already exists, opening: {}".format(script_path))
@@ -463,6 +466,10 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
         with open(script_path, "w+"):
             pass
+
+        if folder_data.root_type == folder_types.perforce:
+            subprocess.Popen(["p4", "add", script_path], cwd=os.path.dirname(script_path), shell=True).wait(timeout=5)
+
         self.open_script_in_editor(script_path)
         self.refresh_scripts()
 
