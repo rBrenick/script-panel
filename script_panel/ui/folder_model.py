@@ -32,7 +32,7 @@ class ScriptPanelSortProxyModel(QtCore.QSortFilterProxyModel):
         elif not left_is_folder and right_is_folder:
             result = sort_order != _qt.AscendingOrder
         else:
-            result = left_data < right_data
+            result = left_data.lower() < right_data.lower()
         return result
 
     def filterAcceptsRow(self, source_row, source_parent):
