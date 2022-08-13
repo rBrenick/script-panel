@@ -3,6 +3,7 @@ __author__ = "Richard Brenick"
 import logging
 # Standard
 import os.path
+import stat
 import subprocess
 import sys
 from functools import partial
@@ -417,6 +418,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
             # open file for edit in p4
             if script_data.root_type == folder_types.perforce:
                 subprocess.Popen(["p4", "edit", script_path], cwd=os.path.dirname(script_path), shell=True).wait(timeout=5)
+                os.chmod(script_path, stat.S_IWRITE)
 
         dcc_interface.open_script(script_path)
 
