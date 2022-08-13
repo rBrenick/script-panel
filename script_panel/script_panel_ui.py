@@ -31,6 +31,8 @@ if not QtWidgets.QApplication.instance():
 
     stylesheets.apply_standalone_stylesheet()
 
+PY3 = sys.version_info.major == 3
+
 dcc_interface = dcc.DCCInterface()
 folder_types = spu.FolderTypes
 BACKGROUND_COLOR_FORM = "background-color:rgb({0}, {1}, {2})"
@@ -427,8 +429,14 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
             # open file for edit in p4
             if script_data.root_type == folder_types.perforce:
-                subprocess.Popen(["p4", "edit", script_path], cwd=os.path.dirname(script_path), shell=True).wait(timeout=5)
                 os.chmod(script_path, stat.S_IWRITE)
+
+                p4_edit = subprocess.Popen(["p4", "edit", script_path], cwd=os.path.dirname(script_path), shell=True)
+                p4_add = subprocess.Popen(["p4", "add", script_path], cwd=os.path.dirname(script_path), shell=True)
+
+                if PY3:
+                    p4_edit.wait(timeout=5)
+                    p4_add.wait(timeout=5)
 
         dcc_interface.open_script(script_path)
 
@@ -480,7 +488,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
             pass
 
         if folder_data.root_type == folder_types.perforce:
-            subprocess.Popen(["p4", "add", script_path], cwd=os.path.dirname(script_path), shell=True).wait(timeout=5)
+            subprocess.Popen(["p4", "add", script_path], cwd=os.path.dirname(script_path), shell=True)
 
         self.open_script_in_editor(script_path)
         self.refresh_scripts()
