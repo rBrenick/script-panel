@@ -38,6 +38,7 @@ folder_types = spu.FolderTypes
 BACKGROUND_COLOR_FORM = "background-color:rgb({0}, {1}, {2})"
 BACKGROUND_COLOR_GREEN = BACKGROUND_COLOR_FORM.format(46, 113, 46)
 BACKGROUND_COLOR_RED = BACKGROUND_COLOR_FORM.format(161, 80, 55)
+BACKGROUND_COLOR_WARNING_RED = BACKGROUND_COLOR_FORM.format(255, 50, 50)
 
 
 class ScriptPanelWidget(QtWidgets.QWidget):
@@ -194,6 +195,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
                 {"Set Icon": selected_script_widget.open_icon_browser},
                 {"Set Icon - via DCC": selected_script_widget.open_dcc_icon_browser},
                 {"Set Icon - Clear": selected_script_widget.clear_icon},
+                {"Update Script Path": selected_script_widget.update_script_path},
                 "-",
                 {"Reset Display - Label": selected_script_widget.reset_display_label},
                 {"Reset Display - Color": selected_script_widget.reset_display_color},
@@ -371,6 +373,9 @@ class ScriptPanelWidget(QtWidgets.QWidget):
             pos=self.ui.command_palette_widget.get_mouse_pos(),
         )
 
+        if not os.path.exists(script_path):
+            script_widget.set_is_missing_script(True)
+
     def add_palette_layout(self):
         new_layout_name, ok = QtWidgets.QInputDialog.getText(
             self,
@@ -514,14 +519,17 @@ class ScriptWidget(QtWidgets.QWidget):
     def __init__(self, script_path="ExampleScript.py", *args, **kwargs):
         super(ScriptWidget, self).__init__(*args, **kwargs)
 
+        self.palette_id = script_path  # very important for saving and loading layouts
+
         self.script_path = script_path
         self.script_name = os.path.basename(script_path)
         self.display_color = None
         self.icon_path = None
+        self.display_label = self.script_name
 
         self.trigger_btn = ui_utils.ScaledContentPushButton(parent=self)
         self.trigger_btn.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
-        self.trigger_btn.setText(self.script_name)
+        self.trigger_btn.setText(self.display_label)
         self.trigger_btn.clicked.connect(self.activate_script)
         self.trigger_btn.setToolTip(self.script_name)
 
@@ -538,13 +546,13 @@ class ScriptWidget(QtWidgets.QWidget):
 
     def get_display_info(self):
         return {
-            "label": self.trigger_btn.text(),
+            "label": self.display_label,
             "color": self.display_color,
             "icon_path": self.icon_path,
         }
 
     def set_display_from_info(self, display_info):
-        self.set_display_label(display_info.get("label", self.script_name))
+        self.set_display_label(display_info.get("label", self.display_label))
         self.set_display_color(display_info.get("color"))
         self.set_icon_from_path(display_info.get("icon_path"))
 
@@ -574,8 +582,21 @@ class ScriptWidget(QtWidgets.QWidget):
             self.set_display_label(new_text)
 
     def set_display_label(self, text):
+        self.display_label = text
         self.trigger_btn.setText(text)
         self.trigger_btn.update_content_size()
+
+    def update_script_path(self):
+        selected_file, _ = QtWidgets.QFileDialog.getOpenFileName(
+            ui_utils.get_app_window(),
+            "Select new script file for {} - {}".format(self.script_name, self.display_label),
+            filter="Script(*.py *.mel);;",
+        )
+        if selected_file:
+            self.script_path = selected_file
+            self.script_name = os.path.basename(selected_file)
+            self.palette_id = selected_file  # very important for saving and loading layouts
+            self.set_is_missing_script(False)
 
     def open_display_color_picker(self):
         new_color = ui_utils.open_color_picker(current_color=self.display_color,
@@ -636,6 +657,16 @@ class ScriptWidget(QtWidgets.QWidget):
                 self.icon_path = icon_path
         except Exception as e:
             logging.warning("Unable to set icon: ", e)
+
+    def set_is_missing_script(self, missing_script):
+        if missing_script:
+            self.trigger_btn.setText(self.display_label + "\nMISSING SCRIPT PATH")
+            self.trigger_btn.setStyleSheet(BACKGROUND_COLOR_WARNING_RED)
+        else:
+            self.trigger_btn.setText(self.display_label)
+            self.set_display_color(self.display_color)
+
+        self.trigger_btn.update_content_size()
 
 
 class ScriptModelItem(QtGui.QStandardItem):

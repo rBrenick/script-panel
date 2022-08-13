@@ -390,11 +390,23 @@ class CommandPaletteWidget(QtWidgets.QWidget):
                 "size": [scene_item.rect().width(), scene_item.rect().height()],
             }
 
-            # if the wrapped widget has implemented get_display_info, chuck it along
-            if scene_item.wrapped_widget and hasattr(scene_item.wrapped_widget, "get_display_info"):
-                scene_info["display_info"] = scene_item.wrapped_widget.get_display_info()
+            item_widget = scene_item.wrapped_widget
 
-            user_layout[scene_item.internal_id] = scene_info
+            # noinspection PyUnreachableCode
+            if 0:
+                import script_panel.script_panel_ui
+                item_widget = script_panel.script_panel_ui.ScriptWidget()  # example widget
+
+            # if the wrapped widget has a custom id, use that instead
+            palette_id = scene_item.internal_id
+            if item_widget and hasattr(item_widget, "palette_id"):
+                palette_id = item_widget.palette_id
+
+            # if get_display_info has been implemented, bring it along
+            if item_widget and hasattr(item_widget, "get_display_info"):
+                scene_info["display_info"] = item_widget.get_display_info()
+
+            user_layout[palette_id] = scene_info
 
         return user_layout
 
