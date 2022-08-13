@@ -171,7 +171,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
         action_list = [
             {"Edit": self.open_favorites_script_in_editor},
-            {"Remove from favorites": self.ui.command_palette_widget.remove_selected_items},
+            {"Remove from palette": self.ui.command_palette_widget.remove_selected_items},
             {"Hide Headers": self.ui.command_palette_widget.hide_headers},
             {"Show Headers": self.ui.command_palette_widget.show_headers},
             {"Grid": [
@@ -207,9 +207,18 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         snippet_popup.main(snippet_data=snippet_data)
 
     def load_settings(self):
+        splitter_sizes = self.settings.get_value(self.settings.k_main_splitter_sizes)
+        if splitter_sizes:
+            splitter_sizes = [int(x) for x in splitter_sizes] # safety convert to proper type
+            self.ui.main_splitter.setSizes(splitter_sizes)
+
         if sp_skyhook:
             skyhook_enabled = self.settings.get_value(self.settings.k_skyhook_enabled, default=False)
-            self.ui.skyhook_blender_CHK.setChecked(skyhook_enabled)
+            self.ui.skyhook_blender_BTN.setChecked(skyhook_enabled)
+
+    def save_settings(self):
+        self.settings.setValue(self.settings.k_main_splitter_sizes, self.ui.main_splitter.sizes())
+        self.settings.setValue(self.settings.k_skyhook_enabled, self.ui.skyhook_blender_BTN.isChecked())
 
     def config_refresh(self):
         self.config_data.refresh_config()
@@ -298,6 +307,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         current_layout = self.ui.palette_chooser.currentText()
         self.settings.update_layout(current_layout, self._get_current_layout_settings())
         self.ui.display_layout_save_required(False)
+        self.save_settings()
         print("Command Palette - layout: '{}' saved".format(current_layout))
 
     def _get_current_layout_settings(self):
@@ -402,7 +412,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
                 return
 
         if sp_skyhook:
-            if self.ui.skyhook_blender_CHK.isChecked():
+            if self.ui.skyhook_blender_BTN.isChecked():
                 sp_skyhook.run_script_in_blender(script_path)
                 return
 
@@ -697,6 +707,13 @@ class ScriptPanelWindow(ui_utils.ToolWindow):
         self.setWindowIcon(icons.script_panel_icon)
         self.resize(1000, 1000)
 
+    def on_close(self):
+        self.main_widget.save_settings()
+
+    def closeEvent(self, event):
+        self.main_widget.save_settings()
+        super(ScriptPanelWindow, self).closeEvent(event)
+
 
 class ScriptPanelUI(QtWidgets.QWidget):
     script_double_clicked = QtCore.Signal(str)
@@ -717,9 +734,16 @@ class ScriptPanelUI(QtWidgets.QWidget):
         self.refresh_BTN = QtWidgets.QPushButton()
         self.refresh_BTN.setIcon(ui_utils.create_qicon("refresh_icon"))
         self.refresh_BTN.setToolTip("Refresh script(s) folder(s)")
+
         self.configure_BTN = QtWidgets.QPushButton()
         self.configure_BTN.setIcon(ui_utils.create_qicon("settings_icon"))
         self.configure_BTN.setToolTip("Configure Script Panel")
+
+        if sp_skyhook:
+            self.skyhook_blender_BTN = QtWidgets.QPushButton()
+            self.skyhook_blender_BTN.setIcon(ui_utils.create_qicon("blender_icon"))
+            self.skyhook_blender_BTN.setToolTip("Check this to activate the scripts in Blender via Skyhook")
+            self.skyhook_blender_BTN.setCheckable(True)
 
         self.palette_chooser = QtWidgets.QComboBox()
         self.save_palette_BTN = QtWidgets.QPushButton(text="Save")
@@ -757,6 +781,9 @@ class ScriptPanelUI(QtWidgets.QWidget):
         search_bar_layout.addWidget(self.search_LE)
         search_bar_layout.addWidget(self.refresh_BTN)
         search_bar_layout.addWidget(self.configure_BTN)
+        if sp_skyhook:
+            search_bar_layout.addWidget(self.skyhook_blender_BTN)
+
         scripts_and_search_layout.addLayout(search_bar_layout)
         scripts_and_search_layout.addWidget(self.scripts_TV)
         scripts_and_search_layout.setSpacing(2)
@@ -764,19 +791,13 @@ class ScriptPanelUI(QtWidgets.QWidget):
         scripts_and_search_widget = QtWidgets.QWidget()
         scripts_and_search_widget.setLayout(scripts_and_search_layout)
 
-        main_splitter = QtWidgets.QSplitter()
-        main_splitter.setOrientation(QtCore.Qt.Orientation.Vertical)
-        main_splitter.addWidget(palette_widget)
-        main_splitter.addWidget(scripts_and_search_widget)
+        self.main_splitter = QtWidgets.QSplitter()
+        self.main_splitter.setOrientation(QtCore.Qt.Orientation.Vertical)
+        self.main_splitter.setHandleWidth(10)
+        self.main_splitter.addWidget(palette_widget)
+        self.main_splitter.addWidget(scripts_and_search_widget)
 
-        if sp_skyhook:
-            skyhook_dccs_layout = QtWidgets.QHBoxLayout()
-            self.skyhook_blender_CHK = QtWidgets.QCheckBox(text="Skyhook to Blender")
-            self.skyhook_blender_CHK.setChecked(True)
-            skyhook_dccs_layout.addWidget(self.skyhook_blender_CHK)
-            main_layout.addLayout(skyhook_dccs_layout)
-
-        main_layout.addWidget(main_splitter)
+        main_layout.addWidget(self.main_splitter)
         self.setLayout(main_layout)
 
         self.display_layout_save_required(False)

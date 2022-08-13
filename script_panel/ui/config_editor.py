@@ -79,8 +79,15 @@ class ConfigEditorWindow(ui_utils.ToolWindow):
             json.dump(user_config_data, fp, indent=2)
 
         try:
+            # noinspection PyUnreachableCode
+            if 0:
+                import script_panel.script_panel_ui
+                self.parent_window = script_panel.script_panel_ui.ScriptPanelWidget()
+
             self.parent_window.config_refresh()
+            self.parent_window.save_settings()
             self.parent_window.register_snippet_shortcut()
+
         except Exception as e:
             print(e)
 
