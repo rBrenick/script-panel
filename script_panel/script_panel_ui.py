@@ -313,15 +313,12 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         print("Command Palette - layout: '{}' saved".format(current_layout))
 
     def _get_current_layout_settings(self):
-        scripts_display_info = {}
-        for script_widget in self.ui.command_palette_widget.scene_widgets:  # type: ScriptWidget
-            scripts_display_info[script_widget.script_path] = script_widget.get_display_info()
-
-        current_palette_layout = self.ui.command_palette_widget.get_scene_layout()
-
         ui_info = dict()
-        ui_info[sps.sk.scripts_display] = scripts_display_info
-        ui_info[sps.sk.palette_layout] = current_palette_layout
+        ui_info[sps.sk.meta_data] = {
+            "version": 2,
+            "user": os.getenv("USERNAME"),
+        }
+        ui_info[sps.sk.palette_layout] = self.ui.command_palette_widget.get_scene_layout()
         ui_info[sps.sk.palette_display] = self.ui.command_palette_widget.get_ui_settings()
         return ui_info
 
@@ -341,17 +338,15 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.ui.command_palette_widget.clear()
         layout_info = self.settings.get_layout(layout_key)
 
-        scripts_display = layout_info.get(sps.sk.scripts_display)
+        layout_info = upgrade_layout_settings_to_latest(layout_info)
+
         palette_layout = layout_info.get(sps.sk.palette_layout, dict())
         palette_display = layout_info.get(sps.sk.palette_display, dict())
 
-        if not scripts_display:
-            scripts_display = dict()
-
-        for script_path, display_info in scripts_display.items():
+        for script_path, palette_item_info in palette_layout.items():
             self.add_script_to_layout(
                 script_path=script_path,
-                display_info=display_info,
+                display_info=palette_item_info.get("display_info"),
             )
 
         self.ui.command_palette_widget.set_ui_settings(palette_display)
@@ -368,9 +363,10 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         if display_info:
             script_widget.set_display_from_info(display_info)
 
-        script_id = os.path.basename(script_path)
+        script_name = os.path.basename(script_path)
         self.ui.command_palette_widget.add_widget(
-            id=script_id,
+            internal_id=script_path,
+            display_name=script_name,
             widget=script_widget,
             pos=self.ui.command_palette_widget.get_mouse_pos(),
         )
@@ -920,6 +916,29 @@ def show_warning_path_does_not_exist(file_path):
             return
 
         subprocess.Popen(r'explorer "{}"'.format(folder_path))
+
+
+def upgrade_layout_settings_to_latest(layout_info):
+    layout_metadata = layout_info.get(sps.sk.meta_data, {})
+
+    if layout_metadata.get("version", 0) == 0:
+        # combine scripts_display and palette_layout
+        scripts_display = layout_info.get(sps.sk.scripts_display)
+        palette_layout = layout_info.get(sps.sk.palette_layout, dict())
+
+        path_file_mapping = {}
+        for script_path, display_info in scripts_display.items():
+            path_file_mapping[os.path.basename(script_path)] = script_path
+
+        upgraded_palette_layout = {}
+        for script_name, palette_item_info in palette_layout.items():
+            script_path = path_file_mapping.get(script_name)
+            palette_item_info["display_info"] = scripts_display.get(script_path)
+            upgraded_palette_layout[script_path] = palette_item_info
+
+        layout_info[sps.sk.palette_layout] = upgraded_palette_layout
+
+    return layout_info
 
 
 def main(reload=False):

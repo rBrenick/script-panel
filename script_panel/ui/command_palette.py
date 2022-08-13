@@ -243,10 +243,10 @@ class ResizeHandle(QtWidgets.QGraphicsPolygonItem):
 
 
 class PaletteRectItem(QtWidgets.QGraphicsRectItem):
-    def __init__(self, id, *args, **kwargs):
+    def __init__(self, internal_id, display_name, *args, **kwargs):
         super(PaletteRectItem, self).__init__(*args, **kwargs)
 
-        self.id = id
+        self.internal_id = internal_id
         self.header_height = lk.header_height
         self.show_header = True
         self.resize_handle_size = lk.default_grid_size
@@ -265,7 +265,7 @@ class PaletteRectItem(QtWidgets.QGraphicsRectItem):
         self.resize_button.setParentItem(self)
         self.resize_button.setBrush(QtCore.Qt.lightGray)
         self.text_item = QtWidgets.QGraphicsSimpleTextItem(self)
-        self.text_item.setText(id)
+        self.text_item.setText(display_name)
 
     def set_widget_geometry(self):
         header_height = self.header_height if self.show_header else 0
@@ -372,8 +372,8 @@ class CommandPaletteWidget(QtWidgets.QWidget):
         # if view_transform:
         #     self.graphics_view.setTransform(QtGui.QTransform(*view_transform))
 
-    def add_widget(self, id, widget, pos=None):
-        rect_item = PaletteRectItem(id, 0, 0, self.scene.grid_size * 8, self.scene.grid_size * 4)
+    def add_widget(self, internal_id, display_name, widget, pos=None):
+        rect_item = PaletteRectItem(internal_id, display_name, 0, 0, self.scene.grid_size * 8, self.scene.grid_size * 4)
         rect_item.wrap_widget(widget)
         self.scene.addItem(rect_item)
         if pos:
@@ -385,15 +385,22 @@ class CommandPaletteWidget(QtWidgets.QWidget):
     def get_scene_layout(self):
         user_layout = {}
         for scene_item in self._scene_items:  # type: PaletteRectItem
-            user_layout[scene_item.id] = {
+            scene_info = {
                 "pos": scene_item.pos().toTuple(),
                 "size": [scene_item.rect().width(), scene_item.rect().height()],
             }
+
+            # if the wrapped widget has implemented get_display_info, chuck it along
+            if scene_item.wrapped_widget and hasattr(scene_item.wrapped_widget, "get_display_info"):
+                scene_info["display_info"] = scene_item.wrapped_widget.get_display_info()
+
+            user_layout[scene_item.internal_id] = scene_info
+
         return user_layout
 
     def set_scene_layout(self, user_layout):
         for scene_item in self._scene_items:  # type: PaletteRectItem
-            layout_info = user_layout.get(scene_item.id)  # type: dict
+            layout_info = user_layout.get(scene_item.internal_id)  # type: dict
             if not layout_info:
                 continue
 
@@ -548,7 +555,8 @@ class ExampleWindow(QtWidgets.QMainWindow):
             btn.clicked.connect(test_func)
 
             self.command_palette_widget.add_widget(
-                id="COMMAND_{:03d}".format(i),
+                internal_id="COMMAND_{:03d}".format(i),
+                display_name="Script {}".format(i),
                 widget=btn,
                 pos=[i * 200, i * 200],
             )

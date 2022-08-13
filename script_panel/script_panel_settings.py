@@ -26,7 +26,8 @@ class SettingsConstants:
 
     # layout keys
     layouts = "layouts"
-    scripts_display = "script_display"
+    meta_data = "__meta_data__"
+    scripts_display = "script_display" # deprecated
     palette_layout = "palette_layout"
     palette_display = "palette_display"
 
