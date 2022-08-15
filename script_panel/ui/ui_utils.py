@@ -144,6 +144,10 @@ class CoreToolWindow(QtWidgets.QMainWindow):
         else:
             btn.clicked.connect(command)
 
+    def on_close(self):
+        """for easy with maya docking overloading"""
+        pass
+
 
 class WindowCache:
     window_instances = {}
@@ -201,6 +205,10 @@ if active_dcc_is_maya:
         def show_ui(self, *args, **kwargs):
             """EXISTING WORKSPACES SAFETY - redirect calls from users who already have this window in their workspace"""
             return self.main(*args, **kwargs)
+
+        def hideEvent(self, *args):
+            self.on_close()
+            super(ToolWindow, self).hideEvent(*args)
 
 else:
     ToolWindow = CoreToolWindow

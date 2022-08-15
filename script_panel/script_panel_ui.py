@@ -3,6 +3,7 @@ __author__ = "Richard Brenick"
 import logging
 # Standard
 import os.path
+import stat
 import subprocess
 import sys
 from functools import partial
@@ -30,11 +31,14 @@ if not QtWidgets.QApplication.instance():
 
     stylesheets.apply_standalone_stylesheet()
 
+PY3 = sys.version_info.major == 3
+
 dcc_interface = dcc.DCCInterface()
 folder_types = spu.FolderTypes
 BACKGROUND_COLOR_FORM = "background-color:rgb({0}, {1}, {2})"
 BACKGROUND_COLOR_GREEN = BACKGROUND_COLOR_FORM.format(46, 113, 46)
 BACKGROUND_COLOR_RED = BACKGROUND_COLOR_FORM.format(161, 80, 55)
+BACKGROUND_COLOR_WARNING_RED = BACKGROUND_COLOR_FORM.format(255, 50, 50)
 
 
 class ScriptPanelWidget(QtWidgets.QWidget):
@@ -170,7 +174,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
         action_list = [
             {"Edit": self.open_favorites_script_in_editor},
-            {"Remove from favorites": self.ui.command_palette_widget.remove_selected_items},
+            {"Remove from palette": self.ui.command_palette_widget.remove_selected_items},
             {"Hide Headers": self.ui.command_palette_widget.hide_headers},
             {"Show Headers": self.ui.command_palette_widget.show_headers},
             {"Grid": [
@@ -191,6 +195,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
                 {"Set Icon": selected_script_widget.open_icon_browser},
                 {"Set Icon - via DCC": selected_script_widget.open_dcc_icon_browser},
                 {"Set Icon - Clear": selected_script_widget.clear_icon},
+                {"Update Script Path": selected_script_widget.update_script_path},
                 "-",
                 {"Reset Display - Label": selected_script_widget.reset_display_label},
                 {"Reset Display - Color": selected_script_widget.reset_display_color},
@@ -206,9 +211,18 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         snippet_popup.main(snippet_data=snippet_data)
 
     def load_settings(self):
+        splitter_sizes = self.settings.get_value(self.settings.k_main_splitter_sizes)
+        if splitter_sizes:
+            splitter_sizes = [int(x) for x in splitter_sizes] # safety convert to proper type
+            self.ui.main_splitter.setSizes(splitter_sizes)
+
         if sp_skyhook:
             skyhook_enabled = self.settings.get_value(self.settings.k_skyhook_enabled, default=False)
-            self.ui.skyhook_blender_CHK.setChecked(skyhook_enabled)
+            self.ui.skyhook_blender_BTN.setChecked(skyhook_enabled)
+
+    def save_settings(self):
+        self.settings.setValue(self.settings.k_main_splitter_sizes, self.ui.main_splitter.sizes())
+        self.settings.setValue(self.settings.k_skyhook_enabled, self.ui.skyhook_blender_BTN.isChecked())
 
     def config_refresh(self):
         self.config_data.refresh_config()
@@ -297,18 +311,16 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         current_layout = self.ui.palette_chooser.currentText()
         self.settings.update_layout(current_layout, self._get_current_layout_settings())
         self.ui.display_layout_save_required(False)
+        self.save_settings()
         print("Command Palette - layout: '{}' saved".format(current_layout))
 
     def _get_current_layout_settings(self):
-        scripts_display_info = {}
-        for script_widget in self.ui.command_palette_widget.scene_widgets:  # type: ScriptWidget
-            scripts_display_info[script_widget.script_path] = script_widget.get_display_info()
-
-        current_palette_layout = self.ui.command_palette_widget.get_scene_layout()
-
         ui_info = dict()
-        ui_info[sps.sk.scripts_display] = scripts_display_info
-        ui_info[sps.sk.palette_layout] = current_palette_layout
+        ui_info[sps.sk.meta_data] = {
+            "version": 2,
+            "user": os.getenv("USERNAME"),
+        }
+        ui_info[sps.sk.palette_layout] = self.ui.command_palette_widget.get_scene_layout()
         ui_info[sps.sk.palette_display] = self.ui.command_palette_widget.get_ui_settings()
         return ui_info
 
@@ -328,17 +340,15 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.ui.command_palette_widget.clear()
         layout_info = self.settings.get_layout(layout_key)
 
-        scripts_display = layout_info.get(sps.sk.scripts_display)
+        layout_info = upgrade_layout_settings_to_latest(layout_info)
+
         palette_layout = layout_info.get(sps.sk.palette_layout, dict())
         palette_display = layout_info.get(sps.sk.palette_display, dict())
 
-        if not scripts_display:
-            scripts_display = dict()
-
-        for script_path, display_info in scripts_display.items():
+        for script_path, palette_item_info in palette_layout.items():
             self.add_script_to_layout(
                 script_path=script_path,
-                display_info=display_info,
+                display_info=palette_item_info.get("display_info"),
             )
 
         self.ui.command_palette_widget.set_ui_settings(palette_display)
@@ -355,12 +365,16 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         if display_info:
             script_widget.set_display_from_info(display_info)
 
-        script_id = os.path.basename(script_path)
+        script_name = os.path.basename(script_path)
         self.ui.command_palette_widget.add_widget(
-            id=script_id,
+            internal_id=script_path,
+            display_name=script_name,
             widget=script_widget,
             pos=self.ui.command_palette_widget.get_mouse_pos(),
         )
+
+        if not os.path.exists(script_path):
+            script_widget.set_is_missing_script(True)
 
     def add_palette_layout(self):
         new_layout_name, ok = QtWidgets.QInputDialog.getText(
@@ -401,7 +415,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
                 return
 
         if sp_skyhook:
-            if self.ui.skyhook_blender_CHK.isChecked():
+            if self.ui.skyhook_blender_BTN.isChecked():
                 sp_skyhook.run_script_in_blender(script_path)
                 return
 
@@ -416,7 +430,14 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
             # open file for edit in p4
             if script_data.root_type == folder_types.perforce:
-                subprocess.Popen(["p4", "edit", script_path], cwd=os.path.dirname(script_path), shell=True).wait(timeout=5)
+                os.chmod(script_path, stat.S_IWRITE)
+
+                p4_edit = subprocess.Popen(["p4", "edit", script_path], cwd=os.path.dirname(script_path), shell=True)
+                p4_add = subprocess.Popen(["p4", "add", script_path], cwd=os.path.dirname(script_path), shell=True)
+
+                if PY3:
+                    p4_edit.wait(timeout=5)
+                    p4_add.wait(timeout=5)
 
         dcc_interface.open_script(script_path)
 
@@ -468,7 +489,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
             pass
 
         if folder_data.root_type == folder_types.perforce:
-            subprocess.Popen(["p4", "add", script_path], cwd=os.path.dirname(script_path), shell=True).wait(timeout=5)
+            subprocess.Popen(["p4", "add", script_path], cwd=os.path.dirname(script_path), shell=True)
 
         self.open_script_in_editor(script_path)
         self.refresh_scripts()
@@ -498,14 +519,17 @@ class ScriptWidget(QtWidgets.QWidget):
     def __init__(self, script_path="ExampleScript.py", *args, **kwargs):
         super(ScriptWidget, self).__init__(*args, **kwargs)
 
+        self.palette_id = script_path  # very important for saving and loading layouts
+
         self.script_path = script_path
         self.script_name = os.path.basename(script_path)
         self.display_color = None
         self.icon_path = None
+        self.display_label = self.script_name
 
         self.trigger_btn = ui_utils.ScaledContentPushButton(parent=self)
         self.trigger_btn.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
-        self.trigger_btn.setText(self.script_name)
+        self.trigger_btn.setText(self.display_label)
         self.trigger_btn.clicked.connect(self.activate_script)
         self.trigger_btn.setToolTip(self.script_name)
 
@@ -522,13 +546,13 @@ class ScriptWidget(QtWidgets.QWidget):
 
     def get_display_info(self):
         return {
-            "label": self.trigger_btn.text(),
+            "label": self.display_label,
             "color": self.display_color,
             "icon_path": self.icon_path,
         }
 
     def set_display_from_info(self, display_info):
-        self.set_display_label(display_info.get("label", self.script_name))
+        self.set_display_label(display_info.get("label", self.display_label))
         self.set_display_color(display_info.get("color"))
         self.set_icon_from_path(display_info.get("icon_path"))
 
@@ -558,8 +582,21 @@ class ScriptWidget(QtWidgets.QWidget):
             self.set_display_label(new_text)
 
     def set_display_label(self, text):
+        self.display_label = text
         self.trigger_btn.setText(text)
         self.trigger_btn.update_content_size()
+
+    def update_script_path(self):
+        selected_file, _ = QtWidgets.QFileDialog.getOpenFileName(
+            ui_utils.get_app_window(),
+            "Select new script file for {} - {}".format(self.script_name, self.display_label),
+            filter="Script(*.py *.mel);;",
+        )
+        if selected_file:
+            self.script_path = selected_file
+            self.script_name = os.path.basename(selected_file)
+            self.palette_id = selected_file  # very important for saving and loading layouts
+            self.set_is_missing_script(False)
 
     def open_display_color_picker(self):
         new_color = ui_utils.open_color_picker(current_color=self.display_color,
@@ -620,6 +657,16 @@ class ScriptWidget(QtWidgets.QWidget):
                 self.icon_path = icon_path
         except Exception as e:
             logging.warning("Unable to set icon: ", e)
+
+    def set_is_missing_script(self, missing_script):
+        if missing_script:
+            self.trigger_btn.setText(self.display_label + "\nMISSING SCRIPT PATH")
+            self.trigger_btn.setStyleSheet(BACKGROUND_COLOR_WARNING_RED)
+        else:
+            self.trigger_btn.setText(self.display_label)
+            self.set_display_color(self.display_color)
+
+        self.trigger_btn.update_content_size()
 
 
 class ScriptModelItem(QtGui.QStandardItem):
@@ -695,6 +742,13 @@ class ScriptPanelWindow(ui_utils.ToolWindow):
         self.setWindowIcon(icons.script_panel_icon)
         self.resize(1000, 1000)
 
+    def on_close(self):
+        self.main_widget.save_settings()
+
+    def closeEvent(self, event):
+        self.main_widget.save_settings()
+        super(ScriptPanelWindow, self).closeEvent(event)
+
 
 class ScriptPanelUI(QtWidgets.QWidget):
     script_double_clicked = QtCore.Signal(str)
@@ -715,9 +769,16 @@ class ScriptPanelUI(QtWidgets.QWidget):
         self.refresh_BTN = QtWidgets.QPushButton()
         self.refresh_BTN.setIcon(ui_utils.create_qicon("refresh_icon"))
         self.refresh_BTN.setToolTip("Refresh script(s) folder(s)")
+
         self.configure_BTN = QtWidgets.QPushButton()
         self.configure_BTN.setIcon(ui_utils.create_qicon("settings_icon"))
         self.configure_BTN.setToolTip("Configure Script Panel")
+
+        if sp_skyhook:
+            self.skyhook_blender_BTN = QtWidgets.QPushButton()
+            self.skyhook_blender_BTN.setIcon(ui_utils.create_qicon("blender_icon"))
+            self.skyhook_blender_BTN.setToolTip("Check this to activate the scripts in Blender via Skyhook")
+            self.skyhook_blender_BTN.setCheckable(True)
 
         self.palette_chooser = QtWidgets.QComboBox()
         self.save_palette_BTN = QtWidgets.QPushButton(text="Save")
@@ -755,6 +816,9 @@ class ScriptPanelUI(QtWidgets.QWidget):
         search_bar_layout.addWidget(self.search_LE)
         search_bar_layout.addWidget(self.refresh_BTN)
         search_bar_layout.addWidget(self.configure_BTN)
+        if sp_skyhook:
+            search_bar_layout.addWidget(self.skyhook_blender_BTN)
+
         scripts_and_search_layout.addLayout(search_bar_layout)
         scripts_and_search_layout.addWidget(self.scripts_TV)
         scripts_and_search_layout.setSpacing(2)
@@ -762,19 +826,13 @@ class ScriptPanelUI(QtWidgets.QWidget):
         scripts_and_search_widget = QtWidgets.QWidget()
         scripts_and_search_widget.setLayout(scripts_and_search_layout)
 
-        main_splitter = QtWidgets.QSplitter()
-        main_splitter.setOrientation(QtCore.Qt.Orientation.Vertical)
-        main_splitter.addWidget(palette_widget)
-        main_splitter.addWidget(scripts_and_search_widget)
+        self.main_splitter = QtWidgets.QSplitter()
+        self.main_splitter.setOrientation(QtCore.Qt.Orientation.Vertical)
+        self.main_splitter.setHandleWidth(10)
+        self.main_splitter.addWidget(palette_widget)
+        self.main_splitter.addWidget(scripts_and_search_widget)
 
-        if sp_skyhook:
-            skyhook_dccs_layout = QtWidgets.QHBoxLayout()
-            self.skyhook_blender_CHK = QtWidgets.QCheckBox(text="Skyhook to Blender")
-            self.skyhook_blender_CHK.setChecked(True)
-            skyhook_dccs_layout.addWidget(self.skyhook_blender_CHK)
-            main_layout.addLayout(skyhook_dccs_layout)
-
-        main_layout.addWidget(main_splitter)
+        main_layout.addWidget(self.main_splitter)
         self.setLayout(main_layout)
 
         self.display_layout_save_required(False)
@@ -889,6 +947,29 @@ def show_warning_path_does_not_exist(file_path):
             return
 
         subprocess.Popen(r'explorer "{}"'.format(folder_path))
+
+
+def upgrade_layout_settings_to_latest(layout_info):
+    layout_metadata = layout_info.get(sps.sk.meta_data, {})
+
+    if layout_metadata.get("version", 0) == 0:
+        # combine scripts_display and palette_layout
+        scripts_display = layout_info.get(sps.sk.scripts_display)
+        palette_layout = layout_info.get(sps.sk.palette_layout, dict())
+
+        path_file_mapping = {}
+        for script_path, display_info in scripts_display.items():
+            path_file_mapping[os.path.basename(script_path)] = script_path
+
+        upgraded_palette_layout = {}
+        for script_name, palette_item_info in palette_layout.items():
+            script_path = path_file_mapping.get(script_name)
+            palette_item_info["display_info"] = scripts_display.get(script_path)
+            upgraded_palette_layout[script_path] = palette_item_info
+
+        layout_info[sps.sk.palette_layout] = upgraded_palette_layout
+
+    return layout_info
 
 
 def main(reload=False):

@@ -26,7 +26,8 @@ class SettingsConstants:
 
     # layout keys
     layouts = "layouts"
-    scripts_display = "script_display"
+    meta_data = "__meta_data__"
+    scripts_display = "script_display" # deprecated
     palette_layout = "palette_layout"
     palette_display = "palette_display"
 
@@ -51,6 +52,7 @@ class ScriptPanelSettings(ui_utils.BaseSettings):
     k_active_layout = "active_layout"
     k_double_click_action = "double_click_action"
     k_skyhook_enabled = "skyhook_enabled"
+    k_main_splitter_sizes = "main_splitter_sizes"
 
     def __init__(self, *args, **kwargs):
         super(ScriptPanelSettings, self).__init__(
