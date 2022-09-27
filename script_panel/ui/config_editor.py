@@ -4,8 +4,9 @@ import os
 
 import script_panel.script_panel_settings as sps
 import script_panel.script_panel_utils as spu
+from . import python_syntax
 from . import ui_utils
-from .ui_utils import QtWidgets, QtCore
+from .ui_utils import QtWidgets, QtCore, QtGui
 
 
 class LocalConstants:
@@ -198,6 +199,10 @@ def new_snippet_dialog(parent=None):
 
     snippet_TE = QtWidgets.QTextEdit()
     snippet_TE.setPlaceholderText("Snippet text")
+    python_syntax.PythonHighlighter(snippet_TE.document())
+
+    font = QtGui.QFont("Courier New")
+    snippet_TE.document().setDefaultFont(font)
 
     buttons = QtWidgets.QDialogButtonBox(
         QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel,
