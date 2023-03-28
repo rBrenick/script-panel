@@ -952,7 +952,7 @@ def show_warning_path_does_not_exist(file_path):
 def upgrade_layout_settings_to_latest(layout_info):
     layout_metadata = layout_info.get(sps.sk.meta_data, {})
 
-    if layout_metadata.get("version", 0) == 0:
+    if layout_metadata.get("version") == 0:
         # combine scripts_display and palette_layout
         scripts_display = layout_info.get(sps.sk.scripts_display)
         palette_layout = layout_info.get(sps.sk.palette_layout, dict())
