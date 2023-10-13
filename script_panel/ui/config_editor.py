@@ -67,6 +67,10 @@ class ConfigEditorWindow(ui_utils.ToolWindow):
         self.ui.remove_snippet_btn.clicked.connect(self.remove_selected_snippets)
         self.ui.snippet_shortcut_LE.textChanged.connect(self.ui.set_snippet_label_text)
 
+        current_shortcut = self.user_config_data.get_user_data().get(spu.lk.snippet_shortcut)
+        if current_shortcut:
+            self.ui.snippet_shortcut_LE.setText(current_shortcut)
+
         self.ui.display_save_required(False)
 
     def save_user_config(self):

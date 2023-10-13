@@ -122,7 +122,8 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         if self.snippet_shortcut:
             return
 
-        snippet_key = self.settings.get_value(spu.lk.snippet_shortcut, default=spu.lk.default_snippet_shortcut)
+        snippet_key = self.config_data.get_user_data().get(spu.lk.snippet_shortcut, spu.lk.default_snippet_shortcut)
+
         snippet_shortcut = QtWidgets.QShortcut(
             QtGui.QKeySequence(snippet_key),
             ui_utils.get_app_window(),
