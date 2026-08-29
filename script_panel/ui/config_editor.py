@@ -144,7 +144,11 @@ class ConfigEditorWindow(ui_utils.ToolWindow):
         for key, val in path_data.items():
             twi = QtWidgets.QTreeWidgetItem()
             if editable:
-                twi.setFlags(twi.flags() | QtWidgets.QTreeWidget.AllEditTriggers)
+                # This used to OR in QTreeWidget.AllEditTriggers, which is an
+                # EditTrigger and not an ItemFlag. Qt5 let the mismatch through and
+                # AllEditTriggers (31) happens to contain the ItemIsEditable bit (2),
+                # so it worked by accident. Qt6 raises TypeError on the OR instead.
+                twi.setFlags(twi.flags() | QtCore.Qt.ItemIsEditable)
 
             twi.setText(0, key)
             twi.setText(1, str(val))
@@ -161,7 +165,7 @@ class ConfigEditorWindow(ui_utils.ToolWindow):
                 return
 
         root_twi = QtWidgets.QTreeWidgetItem()
-        root_twi.setFlags(root_twi.flags() | QtWidgets.QTreeWidget.AllEditTriggers)
+        root_twi.setFlags(root_twi.flags() | QtCore.Qt.ItemIsEditable)
         root_twi.setText(0, display_key)
         root_twi.setText(1, snippet_text)
         self.ui.snippets_TW.addTopLevelItem(root_twi)

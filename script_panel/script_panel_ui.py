@@ -15,7 +15,7 @@ from script_panel.ui import command_palette
 from script_panel.ui import folder_model
 from script_panel.ui import snippet_popup
 from script_panel.ui import ui_utils
-from script_panel.ui.ui_utils import QtCore, QtWidgets, QtGui
+from script_panel.ui.ui_utils import QtCore, QtWidgets, QtGui, QShortcut
 
 try:
     from script_panel.dcc import script_panel_skyhook as sp_skyhook
@@ -96,21 +96,21 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.setLayout(main_layout)
 
     def setup_palette_shortcuts(self):
-        del_hotkey = QtWidgets.QShortcut(
+        del_hotkey = QShortcut(
             QtGui.QKeySequence("DEL"),
             self.ui.command_palette_widget.graphics_view,
             self.ui.command_palette_widget.remove_selected_items,
         )
         del_hotkey.setContext(QtCore.Qt.WidgetShortcut)
 
-        save_layout_hotkey = QtWidgets.QShortcut(
+        save_layout_hotkey = QShortcut(
             QtGui.QKeySequence("Ctrl+S"),
             self.ui.command_palette_widget.graphics_view,
             self.save_favorites_layout,
         )
         save_layout_hotkey.setContext(QtCore.Qt.WidgetShortcut)
 
-        load_layout_hotkey = QtWidgets.QShortcut(
+        load_layout_hotkey = QShortcut(
             QtGui.QKeySequence("F5"),
             self.ui.command_palette_widget.graphics_view,
             self.load_current_layout,
@@ -124,7 +124,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
 
         snippet_key = self.config_data.get_user_data().get(spu.lk.snippet_shortcut, spu.lk.default_snippet_shortcut)
 
-        snippet_shortcut = QtWidgets.QShortcut(
+        snippet_shortcut = QShortcut(
             QtGui.QKeySequence(snippet_key),
             ui_utils.get_app_window(),
             self.open_snippet_popup,
@@ -241,7 +241,9 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         self.ui.scripts_TV.expandToDepth(self.default_expand_depth)
         self.ui.scripts_TV.sortByColumn(0, QtCore.Qt.AscendingOrder)
         header = self.ui.scripts_TV.header()
-        header.setSectionResizeMode(0, header.ResizeToContents)
+        # PySide6 dropped unscoped enum lookup on *instances*, so this has to go
+        # through the class. That spelling works on PySide2 too.
+        header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
 
         # run text in filter
         self.filter_scripts()
@@ -396,19 +398,19 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         
         if not text:
             # reset
-            self.proxy.setFilterRegExp("")
+            self.proxy.setFilterRegularExpression(QtCore.QRegularExpression())
             self.ui.scripts_TV.expandToDepth(self.default_expand_depth)
             return
-        
+
         # let's get rid of underscores
         text = text.replace(' ', '[_ ]')
-        
+
         # this makes a pattern that allows characters to appear in a sequence, but allows for other things in between them
         # eg, "meta per", would return "bake_and_export_metahuman_performance"
         fuzzy_pattern = '.*'.join(c for c in text)
-        
-        search = QtCore.QRegExp(fuzzy_pattern, QtCore.Qt.CaseInsensitive, QtCore.QRegExp.RegExp)
-        self.proxy.setFilterRegExp(search)
+
+        search = QtCore.QRegularExpression(fuzzy_pattern, QtCore.QRegularExpression.CaseInsensitiveOption)
+        self.proxy.setFilterRegularExpression(search)
         self.ui.scripts_TV.expandAll()
 
     def script_double_clicked(self, script_path):

@@ -36,8 +36,11 @@ class ScriptPanelSortProxyModel(QtCore.QSortFilterProxyModel):
         return result
 
     def filterAcceptsRow(self, source_row, source_parent):
-        filter_regex = self.filterRegExp()
-        if filter_regex.isEmpty():
+        # QRegExp is gone in Qt6, and so are filterRegExp()/setFilterRegExp().
+        # QRegularExpression and setFilterRegularExpression() exist on Qt5.12+ and Qt6
+        # alike, so the same spelling works on both bindings.
+        filter_regex = self.filterRegularExpression()
+        if not filter_regex.pattern():
             return True
 
         r = source_row  # type: int
@@ -50,10 +53,7 @@ class ScriptPanelSortProxyModel(QtCore.QSortFilterProxyModel):
             if self.filterAcceptsRow(i, model_index):
                 return True
 
-        result = filter_regex.indexIn(path_data.relative_path)
-        if result == -1:
-            return False
-        return True
+        return filter_regex.match(path_data.relative_path).hasMatch()
 
 
 class PathData(object):
