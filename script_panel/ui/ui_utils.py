@@ -372,9 +372,13 @@ class ScaledContentPushButton(QtWidgets.QPushButton):
         if self.icon():
             icon_width = min(self.iconSize().width(), self.max_icon_size)
 
-        # QFontMetrics.width() was removed in Qt6, horizontalAdvance() is the replacement
-        # and has been available since Qt 5.11, so it works on both bindings.
-        text_width = self.fontMetrics().horizontalAdvance(self.text())
+        # QFontMetrics.width() was removed in Qt6; horizontalAdvance() replaces it but
+        # only exists from Qt 5.11, so older Mayas keep width().
+        metrics = self.fontMetrics()
+        if hasattr(metrics, "horizontalAdvance"):
+            text_width = metrics.horizontalAdvance(self.text())
+        else:
+            text_width = metrics.width(self.text())
 
         h_factor = float(size.height()) / self.fontMetrics().height()
         w_factor = float(size.width()) / max((text_width + icon_width), 0.0001)

@@ -2,6 +2,44 @@ from .ui_utils import QtCore
 
 _qt = QtCore.Qt  # quicker access to properties
 
+# Qt6 removed QRegExp and with it QSortFilterProxyModel.filterRegExp/setFilterRegExp.
+# QRegularExpression replaces it, but setFilterRegularExpression() only exists from
+# Qt 5.12, so older Mayas (Qt 5.6) keep the QRegExp spelling. Same shape as the
+# companion mocap-browser change.
+_HAS_QREGEXP = hasattr(QtCore, "QRegExp")
+
+
+def make_filter_regex(pattern):
+    if _HAS_QREGEXP:
+        return QtCore.QRegExp(pattern, _qt.CaseInsensitive, QtCore.QRegExp.RegExp)
+    return QtCore.QRegularExpression(
+        pattern or "", QtCore.QRegularExpression.CaseInsensitiveOption)
+
+
+def set_filter_regex(proxy, regex):
+    if _HAS_QREGEXP:
+        proxy.setFilterRegExp(regex)
+    else:
+        proxy.setFilterRegularExpression(regex)
+
+
+def _active_filter_regex(proxy):
+    if _HAS_QREGEXP:
+        return proxy.filterRegExp()
+    return proxy.filterRegularExpression()
+
+
+def _regex_is_empty(regex):
+    if _HAS_QREGEXP:
+        return regex.isEmpty()
+    return not regex.pattern()
+
+
+def _regex_matches(regex, text):
+    if _HAS_QREGEXP:
+        return regex.indexIn(text) != -1
+    return regex.match(text).hasMatch()
+
 
 class ScriptPanelSortProxyModel(QtCore.QSortFilterProxyModel):
     """
@@ -36,11 +74,8 @@ class ScriptPanelSortProxyModel(QtCore.QSortFilterProxyModel):
         return result
 
     def filterAcceptsRow(self, source_row, source_parent):
-        # QRegExp is gone in Qt6, and so are filterRegExp()/setFilterRegExp().
-        # QRegularExpression and setFilterRegularExpression() exist on Qt5.12+ and Qt6
-        # alike, so the same spelling works on both bindings.
-        filter_regex = self.filterRegularExpression()
-        if not filter_regex.pattern():
+        filter_regex = _active_filter_regex(self)
+        if _regex_is_empty(filter_regex):
             return True
 
         r = source_row  # type: int
@@ -53,7 +88,7 @@ class ScriptPanelSortProxyModel(QtCore.QSortFilterProxyModel):
             if self.filterAcceptsRow(i, model_index):
                 return True
 
-        return filter_regex.match(path_data.relative_path).hasMatch()
+        return _regex_matches(filter_regex, path_data.relative_path)
 
 
 class PathData(object):

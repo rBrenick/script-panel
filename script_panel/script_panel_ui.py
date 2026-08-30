@@ -398,7 +398,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         
         if not text:
             # reset
-            self.proxy.setFilterRegularExpression(QtCore.QRegularExpression())
+            folder_model.set_filter_regex(self.proxy, folder_model.make_filter_regex(""))
             self.ui.scripts_TV.expandToDepth(self.default_expand_depth)
             return
 
@@ -409,8 +409,7 @@ class ScriptPanelWidget(QtWidgets.QWidget):
         # eg, "meta per", would return "bake_and_export_metahuman_performance"
         fuzzy_pattern = '.*'.join(c for c in text)
 
-        search = QtCore.QRegularExpression(fuzzy_pattern, QtCore.QRegularExpression.CaseInsensitiveOption)
-        self.proxy.setFilterRegularExpression(search)
+        folder_model.set_filter_regex(self.proxy, folder_model.make_filter_regex(fuzzy_pattern))
         self.ui.scripts_TV.expandAll()
 
     def script_double_clicked(self, script_path):
