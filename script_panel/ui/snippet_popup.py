@@ -1,5 +1,5 @@
 from . import ui_utils
-from .ui_utils import QtCore, QtWidgets, QtGui
+from .ui_utils import QtCore, QtWidgets, QtGui, QShortcut
 
 
 class SnippetPopup(QtWidgets.QWidget):
@@ -26,7 +26,7 @@ class SnippetPopup(QtWidgets.QWidget):
         self.ui.snippet_LW.itemDoubleClicked.connect(self.insert_snippet)
 
         # connect hotkeys
-        snippet_shortcut = QtWidgets.QShortcut(
+        snippet_shortcut = QShortcut(
             QtGui.QKeySequence("Return"),
             self,
             self.insert_snippet,

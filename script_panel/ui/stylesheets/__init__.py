@@ -1,6 +1,9 @@
 import os
 
-from PySide2 import QtWidgets
+try:  # Qt6 / PySide6 (Maya 2025 and newer)
+    from PySide6 import QtWidgets
+except ImportError:  # Qt5 / PySide2 (Maya 2024 and older)
+    from PySide2 import QtWidgets
 
 
 def apply_standalone_stylesheet():

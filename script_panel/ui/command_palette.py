@@ -63,14 +63,15 @@ class PaletteGraphicsView(QtWidgets.QGraphicsView):
 
         self.setAcceptDrops(True)
         self.setAlignment(QtCore.Qt.AlignTop | QtCore.Qt.AlignLeft)
-        self.setTransformationAnchor(self.AnchorUnderMouse)
+        self.setTransformationAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
+        # QPainter.HighQualityAntialiasing was deprecated in Qt 5.14 (it had become a
+        # no-op synonym for Antialiasing) and removed outright in Qt6.
         self.setRenderHints(
             QtGui.QPainter.Antialiasing
-            | QtGui.QPainter.HighQualityAntialiasing
             | QtGui.QPainter.SmoothPixmapTransform
         )
-        self.setViewportUpdateMode(self.FullViewportUpdate)
-        self.setDragMode(self.RubberBandDrag)
+        self.setViewportUpdateMode(QtWidgets.QGraphicsView.FullViewportUpdate)
+        self.setDragMode(QtWidgets.QGraphicsView.RubberBandDrag)
 
     def keyPressEvent(self, event):
         if not event.isAutoRepeat() and event.key() == QtCore.Qt.Key_Space:
@@ -155,9 +156,9 @@ class PaletteGraphicsView(QtWidgets.QGraphicsView):
 
     def toggle_drag_mode(self, state=False):
         if state:
-            self.setDragMode(self.ScrollHandDrag)
+            self.setDragMode(QtWidgets.QGraphicsView.ScrollHandDrag)
         else:
-            self.setDragMode(self.RubberBandDrag)
+            self.setDragMode(QtWidgets.QGraphicsView.RubberBandDrag)
 
     def dragMoveEvent(self, event):
         event.accept()
@@ -323,9 +324,9 @@ class PaletteRectItem(QtWidgets.QGraphicsRectItem):
         return pos
 
     def itemChange(self, change, value):
-        if change == self.ItemPositionChange and self.scene():
+        if change == QtWidgets.QGraphicsItem.ItemPositionChange and self.scene():
             value = self.snap_pos_to_grid(value)
-        if change == self.ItemSelectedChange and self.scene():
+        if change == QtWidgets.QGraphicsItem.ItemSelectedChange and self.scene():
             self.is_selected = bool(value)
             self.update_brush()
         return super(PaletteRectItem, self).itemChange(change, value)

@@ -5,11 +5,24 @@ import sys
 from functools import partial
 
 # Not even going to pretend to have Maya 2016 support
-from PySide2 import QtCore
-from PySide2 import QtGui
-from PySide2 import QtUiTools
-from PySide2 import QtWidgets
-from shiboken2 import wrapInstance
+try:  # Qt6 / PySide6 (Maya 2025 and newer)
+    from PySide6 import QtCore
+    from PySide6 import QtGui
+    from PySide6 import QtUiTools
+    from PySide6 import QtWidgets
+    from PySide6.QtGui import QAction, QActionGroup, QShortcut
+    from shiboken6 import wrapInstance
+
+    QT_BINDING = "PySide6"
+except ImportError:  # Qt5 / PySide2 (Maya 2024 and older)
+    from PySide2 import QtCore
+    from PySide2 import QtGui
+    from PySide2 import QtUiTools
+    from PySide2 import QtWidgets
+    from PySide2.QtWidgets import QAction, QActionGroup, QShortcut
+    from shiboken2 import wrapInstance
+
+    QT_BINDING = "PySide2"
 
 if sys.version_info.major >= 3:
     long = int
@@ -238,9 +251,9 @@ def build_menu_from_action_list(actions, menu=None, is_sub_menu=False, extra_tri
                 if not item_to_check:
                     item_to_check = default_choice
 
-                grp = QtWidgets.QActionGroup(menu)
+                grp = QActionGroup(menu)
                 for choice_key in choices:
-                    action = QtWidgets.QAction(choice_key, menu)
+                    action = QAction(choice_key, menu)
                     action.setCheckable(True)
 
                     if choice_key == item_to_check:
@@ -359,8 +372,16 @@ class ScaledContentPushButton(QtWidgets.QPushButton):
         if self.icon():
             icon_width = min(self.iconSize().width(), self.max_icon_size)
 
+        # QFontMetrics.width() was removed in Qt6; horizontalAdvance() replaces it but
+        # only exists from Qt 5.11, so older Mayas keep width().
+        metrics = self.fontMetrics()
+        if hasattr(metrics, "horizontalAdvance"):
+            text_width = metrics.horizontalAdvance(self.text())
+        else:
+            text_width = metrics.width(self.text())
+
         h_factor = float(size.height()) / self.fontMetrics().height()
-        w_factor = float(size.width()) / max((self.fontMetrics().width(self.text()) + icon_width), 0.0001)
+        w_factor = float(size.width()) / max((text_width + icon_width), 0.0001)
 
         # the smaller value determines max text size
         factor = min(h_factor, w_factor) * self.text_padding_multiplier
